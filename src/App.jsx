@@ -147,7 +147,7 @@ export default function App() {
         ? cloudEnabled
           ? "Live shared board — changes sync instantly for everyone"
           : "Local mode — add Supabase keys to .env (see DEPLOY.md)"
-        : "View only — use the edit link to make changes";
+        : "View only — changes disabled";
 
   return (
     <div style={{
@@ -395,9 +395,7 @@ export default function App() {
             display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8,
           }}>
             <span style={{ color: "#475569", fontSize: 11 }}>
-              {canEdit
-                ? "Shared board · assign tasks and comments · auto-saves to the cloud"
-                : "View-only link · share the edit link with teammates who should change the board"}
+              {"Shared board · assign tasks and comments · auto-saves to the cloud"}
             </span>
             <span style={{ color: "#334155", fontSize: 11 }}>
               {PEOPLE.length} members · {CATEGORIES.length} categories

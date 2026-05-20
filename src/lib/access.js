@@ -11,13 +11,3 @@ export function getAccessMode() {
   };
 }
 
-export function buildShareUrls() {
-  const base = new URL(import.meta.env.BASE, window.location.origin).href;
-  const viewUrl = `${base}?mode=view`;
-  const editUrl = EDIT_KEY ? `${base}?key=${encodeURIComponent(EDIT_KEY)}` : base;
-  return { viewUrl, editUrl, base };
-}
-
-export async function copyText(text) {
-  await navigator.clipboard.writeText(text);
-}
