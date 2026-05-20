@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { PEOPLE, CATEGORIES, CATEGORY_COLORS } from "./lib/constants.js";
 import { applyParsedState } from "./lib/boardState.js";
-import { getAccessMode, buildShareUrls, copyText } from "./lib/access.js";
+import { getAccessMode } from "./lib/access.js";
 import {
   cloudEnabled,
   loadBoard,
@@ -121,16 +121,6 @@ export default function App() {
     saveMeta(teamTitle, comments);
   }
 
-  async function copyLink(kind) {
-    const { viewUrl, editUrl } = buildShareUrls();
-    const url = kind === "view" ? viewUrl : editUrl;
-    try {
-      await copyText(url);
-      showToast(kind === "view" ? "View link copied ✓" : "Edit link copied ✓");
-    } catch {
-      showToast("Copy failed");
-    }
-  }
 
   function getColumnCount(cat) {
     return PEOPLE.filter(p => assignments?.[p]?.[cat]).length;
@@ -227,41 +217,6 @@ export default function App() {
             >{teamTitle}</h1>
           )}
 
-          <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-            <button
-              onClick={() => copyLink("view")}
-              style={{
-                background: "#334155",
-                color: "#e2e8f0",
-                border: "1px solid #475569",
-                borderRadius: 8,
-                padding: "8px 16px",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Copy view link
-            </button>
-            {canEdit && (
-              <button
-                onClick={() => copyLink("edit")}
-                style={{
-                  background: "#3b82f6",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 8,
-                  padding: "8px 16px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  boxShadow: "0 4px 16px rgba(59,130,246,0.35)",
-                }}
-              >
-                Copy edit link
-              </button>
-            )}
-          </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 28 }}>
