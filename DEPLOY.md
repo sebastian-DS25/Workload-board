@@ -20,9 +20,19 @@ GitHub Pages hosts the app (reliable, free). Supabase stores one board for the t
    - **Project URL** → `VITE_SUPABASE_URL`
    - **anon public** key → `VITE_SUPABASE_ANON_KEY`
 3. **SQL Editor → New query** — paste everything from `supabase/schema.sql` → **Run**.
-4. **Database → Replication** — under `supabase_realtime`, enable the **`boards`** table (so edits sync live).
+4. **Database → Replication** — under `supabase_realtime`, enable **`assignments`** and **`board_meta`** (required for instant sync).
 
 Optional: pick a team password for edits only, e.g. `my-team-secret-2026` — you’ll use this as `VITE_EDIT_KEY`.
+
+### Values for `.env` (local) and GitHub Secrets (production)
+
+| Variable | Where to find it |
+|----------|------------------|
+| `VITE_SUPABASE_URL` | Supabase → **Project Settings** → **API** → **Project URL** (e.g. `https://abcdefgh.supabase.co`) |
+| `VITE_SUPABASE_ANON_KEY` | Same page → **Project API keys** → **anon** **public** (long `eyJ...` string) |
+| `VITE_EDIT_KEY` | Any secret you choose (optional). Edit URL must include `?key=your-secret` |
+
+Copy `.env.example` to `.env` and paste your values for local `npm run dev`.
 
 ---
 
@@ -46,11 +56,9 @@ git init
 git add .
 git commit -m "Workload board with GitHub Pages and Supabase sync"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/workload-board.git
+git remote add origin git@github.com:sebastian-DS25/Workload-board.git
 git push -u origin main
 ```
-
-Replace `YOUR_USERNAME` with your GitHub username.
 
 ---
 
@@ -76,7 +84,7 @@ Add:
 
 Your site will be:
 
-`https://YOUR_USERNAME.github.io/workload-board/`
+`https://sebastian-DS25.github.io/Workload-board/`
 
 ---
 

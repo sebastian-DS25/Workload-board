@@ -2,7 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { PEOPLE, CATEGORIES, CATEGORY_COLORS } from "./lib/constants.js";
 import { applyParsedState } from "./lib/boardState.js";
 import { getAccessMode, buildShareUrls, copyText } from "./lib/access.js";
-import { cloudEnabled, loadBoard, saveBoard, subscribeBoard } from "./lib/boardStorage.js";
+import {
+  cloudEnabled,
+  loadBoard,
+  upsertAssignment,
+  saveBoardMeta,
+  subscribeBoard,
+} from "./lib/boardStorage.js";
+import { initComments } from "./lib/boardState.js";
 
 export default function App() {
   const { isView, canEdit } = getAccessMode();
@@ -32,10 +39,19 @@ export default function App() {
         applyState(state);
         setLoadError(null);
 
-        unsubscribe = subscribeBoard((remote) => {
-          if (savingRef.current) return;
-          applyState(remote);
-          showToast("Board updated");
+        unsubscribe = subscribeBoard({
+          onAssignmentChange: ({ person, category, active }) => {
+            if (savingRef.current) return;
+            setAssignments(prev => ({
+              ...prev,
+              [person]: { ...prev[person], [category]: active },
+            }));
+          },
+          onMetaChange: ({ title, comments }) => {
+            if (savingRef.current) return;
+            setTeamTitle(title);
+            setComments({ ...initComments(), ...(comments || {}) });
+          },
         });
       } catch (err) {
         console.error(err);
@@ -55,17 +71,12 @@ export default function App() {
     setTimeout(() => setToast(null), 2200);
   }
 
-  async function persist(assignmentsData, titleData, commentsData, toastMsg = "Saved ✓") {
+  async function saveMeta(titleData, commentsData, toastMsg = "Saved ✓") {
     if (!canEdit) return;
     savingRef.current = true;
     setSaving(true);
-    const payload = {
-      assignments: assignmentsData,
-      title: titleData,
-      comments: commentsData,
-    };
     try {
-      await saveBoard(payload);
+      await saveBoardMeta(titleData, commentsData);
       showToast(toastMsg);
     } catch (err) {
       console.error(err);
@@ -76,18 +87,28 @@ export default function App() {
     }
   }
 
-  function save(newAssignments, newTitle, newComments) {
-    persist(newAssignments, newTitle, newComments ?? comments);
-  }
-
-  function toggle(person, cat) {
+  async function toggle(person, cat) {
     if (!canEdit) return;
-    const updated = {
-      ...assignments,
-      [person]: { ...assignments[person], [cat]: !assignments[person][cat] },
-    };
-    setAssignments(updated);
-    save(updated, teamTitle, comments);
+    const active = !assignments[person][cat];
+    setAssignments(prev => ({
+      ...prev,
+      [person]: { ...prev[person], [cat]: active },
+    }));
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await upsertAssignment(person, cat, active);
+    } catch (err) {
+      console.error(err);
+      setAssignments(prev => ({
+        ...prev,
+        [person]: { ...prev[person], [cat]: !active },
+      }));
+      showToast("Save failed — try again");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   }
 
   function updateComment(person, text) {
@@ -97,7 +118,7 @@ export default function App() {
 
   function saveComment() {
     if (!canEdit) return;
-    save(assignments, teamTitle, comments);
+    saveMeta(teamTitle, comments);
   }
 
   async function copyLink(kind) {
@@ -134,8 +155,8 @@ export default function App() {
       ? "View only — changes disabled"
       : canEdit
         ? cloudEnabled
-          ? "Live shared board — edits sync for everyone"
-          : "Local mode — connect Supabase for team sync (see DEPLOY.md)"
+          ? "Live shared board — changes sync instantly for everyone"
+          : "Local mode — add Supabase keys to .env (see DEPLOY.md)"
         : "View only — use the edit link to make changes";
 
   return (
@@ -187,8 +208,8 @@ export default function App() {
               autoFocus
               value={teamTitle}
               onChange={e => setTeamTitle(e.target.value)}
-              onBlur={() => { setEditingTitle(false); save(assignments, teamTitle, comments); }}
-              onKeyDown={e => { if (e.key === "Enter") { setEditingTitle(false); save(assignments, teamTitle, comments); } }}
+              onBlur={() => { setEditingTitle(false); saveMeta(teamTitle, comments); }}
+              onKeyDown={e => { if (e.key === "Enter") { setEditingTitle(false); saveMeta(teamTitle, comments); } }}
               style={{
                 background: "transparent", border: "none", borderBottom: "2px solid #3b82f6",
                 color: "#f1f5f9", fontSize: 28, fontWeight: 700, letterSpacing: -0.5,

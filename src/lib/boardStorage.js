@@ -1,15 +1,29 @@
-import { createClient } from "@supabase/supabase-js";
-import { BOARD_ID, STORAGE_KEY } from "./constants.js";
-import { applyParsedState, defaultBoardPayload } from "./boardState.js";
+import { STORAGE_KEY } from "./constants.js";
+import {
+  initAssignments,
+  initComments,
+  defaultBoardPayload,
+  applyParsedState,
+} from "./boardState.js";
+import { supabase, cloudEnabled } from "./supabase.js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+export { cloudEnabled };
 
-export const cloudEnabled = Boolean(supabaseUrl && supabaseKey);
+const META_ID = "default";
 
-const supabase = cloudEnabled
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+export function assignmentId(person, category) {
+  return `${person}-${category}`;
+}
+
+function rowsToAssignments(rows) {
+  const assignments = initAssignments();
+  for (const row of rows || []) {
+    if (assignments[row.person] && row.category in assignments[row.person]) {
+      assignments[row.person][row.category] = Boolean(row.active);
+    }
+  }
+  return assignments;
+}
 
 function loadLocal() {
   try {
@@ -21,49 +35,102 @@ function loadLocal() {
   return applyParsedState(defaultBoardPayload());
 }
 
+function saveLocal(payload) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+
 export async function loadBoard() {
   if (!supabase) return loadLocal();
 
-  const { data, error } = await supabase
-    .from("boards")
-    .select("data")
-    .eq("id", BOARD_ID)
-    .maybeSingle();
+  const [assignmentsRes, metaRes] = await Promise.all([
+    supabase.from("assignments").select("person, category, active"),
+    supabase.from("board_meta").select("title, comments").eq("id", META_ID).maybeSingle(),
+  ]);
 
-  if (error) throw error;
-  if (!data?.data) return applyParsedState(defaultBoardPayload());
-  return applyParsedState(data.data);
+  if (assignmentsRes.error) throw assignmentsRes.error;
+  if (metaRes.error) throw metaRes.error;
+
+  return {
+    assignments: rowsToAssignments(assignmentsRes.data),
+    title: metaRes.data?.title ?? defaultBoardPayload().title,
+    comments: { ...initComments(), ...(metaRes.data?.comments || {}) },
+  };
 }
 
-export async function saveBoard(payload) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+export async function upsertAssignment(person, category, active) {
+  const id = assignmentId(person, category);
+  const row = {
+    id,
+    person,
+    category,
+    active,
+    updated_at: new Date().toISOString(),
+  };
 
-  if (!supabase) return;
+  if (!supabase) {
+    const state = loadLocal();
+    state.assignments[person][category] = active;
+    saveLocal(state);
+    return;
+  }
 
-  const { error } = await supabase.from("boards").upsert({
-    id: BOARD_ID,
-    data: payload,
+  const { error } = await supabase.from("assignments").upsert(row);
+  if (error) throw error;
+}
+
+export async function saveBoardMeta(title, comments) {
+  const payload = { assignments: null, title, comments };
+
+  if (!supabase) {
+    const state = loadLocal();
+    saveLocal({ ...state, title, comments });
+    return;
+  }
+
+  const { error } = await supabase.from("board_meta").upsert({
+    id: META_ID,
+    title,
+    comments,
     updated_at: new Date().toISOString(),
   });
 
   if (error) throw error;
 }
 
-export function subscribeBoard(onRemoteUpdate) {
+/** @deprecated Use upsertAssignment / saveBoardMeta */
+export async function saveBoard(payload) {
+  if (!supabase) {
+    saveLocal(payload);
+    return;
+  }
+  await saveBoardMeta(payload.title, payload.comments);
+}
+
+export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
   if (!supabase) return () => {};
 
   const channel = supabase
-    .channel(`board-${BOARD_ID}`)
+    .channel("workload-board-realtime")
     .on(
       "postgres_changes",
-      {
-        event: "UPDATE",
-        schema: "public",
-        table: "boards",
-        filter: `id=eq.${BOARD_ID}`,
-      },
+      { event: "*", schema: "public", table: "assignments" },
       (payload) => {
-        if (payload.new?.data) onRemoteUpdate(applyParsedState(payload.new.data));
+        const row = payload.new ?? payload.old;
+        if (!row?.person || !row?.category) return;
+
+        onAssignmentChange({
+          person: row.person,
+          category: row.category,
+          active: payload.eventType === "DELETE" ? false : Boolean(payload.new?.active),
+        });
+      }
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "board_meta", filter: `id=eq.${META_ID}` },
+      (payload) => {
+        const meta = payload.new;
+        if (meta) onMetaChange({ title: meta.title, comments: meta.comments });
       }
     )
     .subscribe();
