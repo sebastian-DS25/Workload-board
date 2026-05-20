@@ -110,7 +110,7 @@ export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
   if (!supabase) return () => {};
 
   const channel = supabase
-    .channel("workload-board-realtime")
+    .channel(`workload-board-realtime-${Date.now()}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "assignments" },
