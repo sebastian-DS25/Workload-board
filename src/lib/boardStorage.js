@@ -2,6 +2,8 @@ import { STORAGE_KEY } from "./constants.js";
 import {
   initAssignments,
   initComments,
+  initEmailCounts,
+  initOooStatus,
   defaultBoardPayload,
   applyParsedState,
 } from "./boardState.js";
@@ -44,7 +46,7 @@ export async function loadBoard() {
 
   const [assignmentsRes, metaRes] = await Promise.all([
     supabase.from("assignments").select("person, category, active"),
-    supabase.from("board_meta").select("title, comments").eq("id", META_ID).maybeSingle(),
+    supabase.from("board_meta").select("*").eq("id", META_ID).maybeSingle(),
   ]);
 
   if (assignmentsRes.error) throw assignmentsRes.error;
@@ -54,6 +56,8 @@ export async function loadBoard() {
     assignments: rowsToAssignments(assignmentsRes.data),
     title: metaRes.data?.title ?? defaultBoardPayload().title,
     comments: { ...initComments(), ...(metaRes.data?.comments || {}) },
+    emailCounts: { ...initEmailCounts(), ...(metaRes.data?.email_counts || {}) },
+    oooStatus: { ...initOooStatus(), ...(metaRes.data?.ooo_status || {}) },
   };
 }
 
@@ -78,12 +82,10 @@ export async function upsertAssignment(person, category, active) {
   if (error) throw error;
 }
 
-export async function saveBoardMeta(title, comments) {
-  const payload = { assignments: null, title, comments };
-
+export async function saveBoardMeta(title, comments, emailCounts, oooStatus) {
   if (!supabase) {
     const state = loadLocal();
-    saveLocal({ ...state, title, comments });
+    saveLocal({ ...state, title, comments, emailCounts, oooStatus });
     return;
   }
 
@@ -91,6 +93,8 @@ export async function saveBoardMeta(title, comments) {
     id: META_ID,
     title,
     comments,
+    email_counts: emailCounts,
+    ooo_status: oooStatus,
     updated_at: new Date().toISOString(),
   });
 
@@ -130,7 +134,12 @@ export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
       { event: "*", schema: "public", table: "board_meta", filter: `id=eq.${META_ID}` },
       (payload) => {
         const meta = payload.new;
-        if (meta) onMetaChange({ title: meta.title, comments: meta.comments });
+        if (meta) onMetaChange({
+          title: meta.title,
+          comments: meta.comments,
+          emailCounts: meta.email_counts,
+          oooStatus: meta.ooo_status,
+        });
       }
     )
     .subscribe();

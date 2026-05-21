@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { PEOPLE, CATEGORIES, CATEGORY_COLORS } from "./lib/constants.js";
-import { applyParsedState } from "./lib/boardState.js";
+import { applyParsedState, initComments, initEmailCounts, initOooStatus } from "./lib/boardState.js";
 import { getAccessMode } from "./lib/access.js";
 import {
   cloudEnabled,
@@ -9,12 +9,13 @@ import {
   saveBoardMeta,
   subscribeBoard,
 } from "./lib/boardStorage.js";
-import { initComments } from "./lib/boardState.js";
 
 export default function App() {
   const { isView, canEdit } = getAccessMode();
   const [assignments, setAssignments] = useState(null);
   const [comments, setComments] = useState(null);
+  const [emailCounts, setEmailCounts] = useState({});
+  const [oooStatus, setOooStatus] = useState({});
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -35,6 +36,8 @@ export default function App() {
     setAssignments(state.assignments);
     setComments(state.comments);
     setTeamTitle(state.title);
+    setEmailCounts(state.emailCounts);
+    setOooStatus(state.oooStatus);
   }, []);
 
   useEffect(() => {
@@ -54,10 +57,12 @@ export default function App() {
               [person]: { ...prev[person], [category]: active },
             }));
           },
-          onMetaChange: ({ title, comments }) => {
+          onMetaChange: ({ title, comments: c, emailCounts: ec, oooStatus: oos }) => {
             if (savingRef.current) return;
             setTeamTitle(title);
-            setComments({ ...initComments(), ...(comments || {}) });
+            setComments({ ...initComments(), ...(c || {}) });
+            setEmailCounts({ ...initEmailCounts(), ...(ec || {}) });
+            setOooStatus({ ...initOooStatus(), ...(oos || {}) });
           },
         });
       } catch (err) {
@@ -83,7 +88,7 @@ export default function App() {
     savingRef.current = true;
     setSaving(true);
     try {
-      await saveBoardMeta(titleData, commentsData);
+      await saveBoardMeta(titleData, commentsData, emailCounts, oooStatus);
       showToast(toastMsg);
     } catch (err) {
       console.error(err);
@@ -128,6 +133,32 @@ export default function App() {
     saveMeta(teamTitle, comments);
   }
 
+  function updateEmailCount(cat, value) {
+    if (!canEdit) return;
+    const num = Math.max(0, parseInt(value) || 0);
+    setEmailCounts(prev => ({ ...prev, [cat]: num }));
+  }
+
+  async function saveEmailCounts(newCounts) {
+    if (!canEdit) return;
+    try {
+      await saveBoardMeta(teamTitle, comments, newCounts, oooStatus);
+    } catch (err) {
+      showToast("Save failed — try again");
+    }
+  }
+
+  async function toggleOoo(person) {
+    if (!canEdit) return;
+    const newOoo = { ...oooStatus, [person]: !oooStatus[person] };
+    setOooStatus(newOoo);
+    try {
+      await saveBoardMeta(teamTitle, comments, emailCounts, newOoo);
+    } catch (err) {
+      setOooStatus(oooStatus);
+      showToast("Save failed — try again");
+    }
+  }
 
   function getColumnCount(cat) {
     return PEOPLE.filter(p => assignments?.[p]?.[cat]).length;
@@ -155,6 +186,8 @@ export default function App() {
           ? "Live shared board — changes sync instantly for everyone"
           : "Local mode — add Supabase keys to .env (see DEPLOY.md)"
         : "View only — changes disabled";
+
+  const totalEmails = Object.values(emailCounts).reduce((a, b) => a + b, 0);
 
   return (
     <div style={{
@@ -228,16 +261,27 @@ export default function App() {
               }}
             />
           ) : (
-            <h1
-              onClick={() => canEdit && setEditingTitle(true)}
-              style={{
-                color: "#f1f5f9", fontSize: 28, fontWeight: 700, margin: 0,
-                letterSpacing: -0.5, cursor: canEdit ? "pointer" : "default",
-              }}
-              title={canEdit ? "Click to edit title" : undefined}
-            >{teamTitle}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <h1
+                onClick={() => canEdit && setEditingTitle(true)}
+                style={{
+                  color: "#f1f5f9", fontSize: 28, fontWeight: 700, margin: 0,
+                  letterSpacing: -0.5, cursor: canEdit ? "pointer" : "default",
+                }}
+                title={canEdit ? "Click to edit title" : undefined}
+              >{teamTitle}</h1>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "#1e293b", border: "1px solid #334155",
+                borderRadius: 20, padding: "5px 14px",
+              }}>
+                <span style={{ fontSize: 15 }}>📧</span>
+                <span style={{ color: totalEmails > 0 ? "#94a3b8" : "#475569", fontSize: 13, fontWeight: 600 }}>
+                  {totalEmails} emails
+                </span>
+              </div>
+            </div>
           )}
-
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 28 }}>
@@ -279,21 +323,43 @@ export default function App() {
                   <th style={{
                     padding: "16px 20px", textAlign: "left", color: "#64748b",
                     fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155", minWidth: 120,
+                    borderBottom: "1px solid #334155", minWidth: 150,
                   }}>Team Member</th>
                   {CATEGORIES.map(cat => {
                     const col = CATEGORY_COLORS[cat];
                     const count = getColumnCount(cat);
                     return (
                       <th key={cat} style={{
-                        padding: "16px 8px", textAlign: "center",
-                        borderBottom: "1px solid #334155", minWidth: 72,
+                        padding: "12px 8px", textAlign: "center",
+                        borderBottom: "1px solid #334155", minWidth: 86,
                       }}>
-                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
                           <span style={{
-                            fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+                            fontSize: 14, fontWeight: 700, letterSpacing: 0.5,
                             textTransform: "uppercase", color: col.accent,
                           }}>{cat}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={emailCounts[cat] ?? 0}
+                            onChange={e => updateEmailCount(cat, e.target.value)}
+                            onBlur={e => {
+                              const newCounts = { ...emailCounts, [cat]: Math.max(0, parseInt(e.target.value) || 0) };
+                              saveEmailCounts(newCounts);
+                            }}
+                            readOnly={!canEdit}
+                            title={canEdit ? "Emails in this inbox" : undefined}
+                            style={{
+                              width: 46, textAlign: "center",
+                              background: "transparent",
+                              border: "1px solid #334155",
+                              borderRadius: 6,
+                              color: (emailCounts[cat] ?? 0) > 0 ? "#94a3b8" : "#475569",
+                              fontSize: 11, padding: "2px 4px",
+                              outline: "none",
+                              cursor: canEdit ? "text" : "default",
+                            }}
+                          />
                           <span style={{
                             width: 20, height: 20, borderRadius: "50%",
                             background: count > 0 ? col.accent : "#1e293b",
@@ -316,26 +382,45 @@ export default function App() {
                     fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
                     borderBottom: "1px solid #334155",
                   }}>Tasks</th>
+                  <th style={{
+                    padding: "16px 12px", textAlign: "center", color: "#475569",
+                    fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
+                    borderBottom: "1px solid #334155",
+                  }}>OOO</th>
                 </tr>
               </thead>
               <tbody>
                 {PEOPLE.map((person, pi) => {
                   const rowCount = getRowCount(person);
+                  const isOoo = oooStatus[person] ?? false;
                   return (
                     <tr
                       key={person}
-                      style={{ background: pi % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)" }}
+                      style={{
+                        background: isOoo
+                          ? "rgba(100,116,139,0.12)"
+                          : pi % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                        opacity: isOoo ? 0.6 : 1,
+                      }}
                     >
                       <td style={{ padding: "14px 20px", borderBottom: "1px solid #1e293b", verticalAlign: "middle" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div style={{
-                            width: 32, height: 32, borderRadius: "50%",
+                            width: 38, height: 38, borderRadius: "50%",
                             background: `hsl(${(pi * 43) % 360}, 60%, 35%)`,
                             border: `2px solid hsl(${(pi * 43) % 360}, 60%, 50%)`,
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 12, fontWeight: 700, color: "#fff", flexShrink: 0,
+                            fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0,
                           }}>{person[0]}</div>
-                          <span style={{ color: "#e2e8f0", fontWeight: 500, fontSize: 14 }}>{person}</span>
+                          <span style={{ color: "#e2e8f0", fontWeight: 500, fontSize: 17 }}>{person}</span>
+                          {isOoo && (
+                            <span style={{
+                              fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+                              color: "#94a3b8", background: "#334155",
+                              padding: "2px 5px", borderRadius: 4,
+                              textTransform: "uppercase",
+                            }}>OOO</span>
+                          )}
                         </div>
                       </td>
                       {CATEGORIES.map(cat => {
@@ -404,6 +489,21 @@ export default function App() {
                           display: "inline-block", minWidth: 28,
                         }}>{rowCount}</span>
                       </td>
+                      <td style={{ padding: "10px 12px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
+                        <button
+                          onClick={() => toggleOoo(person)}
+                          disabled={!canEdit}
+                          title={isOoo ? "Mark as available" : "Mark as out of office"}
+                          style={{
+                            background: "none", border: "none",
+                            cursor: canEdit ? "pointer" : "default",
+                            fontSize: 18, padding: "4px",
+                            opacity: isOoo ? 1 : 0.2,
+                            filter: isOoo ? "none" : "grayscale(100%)",
+                            transition: "opacity 0.15s, filter 0.15s",
+                          }}
+                        >✈️</button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -445,6 +545,9 @@ export default function App() {
         * { box-sizing: border-box; }
         tbody tr:hover { background: rgba(255,255,255,0.03) !important; }
         button:disabled { opacity: 0.7; }
+        input[type=number] { -moz-appearance: textfield; }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
       `}</style>
     </div>
   );
