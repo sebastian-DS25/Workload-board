@@ -194,7 +194,7 @@ export default function App() {
       minHeight: "100vh",
       background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
       fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-      padding: "32px 24px",
+      padding: "24px 16px",
       position: "relative",
     }}>
       <div style={{
@@ -212,7 +212,7 @@ export default function App() {
         }}>{toast}</div>
       )}
 
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto" }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: "100%", margin: "0 auto" }}>
 
         <div style={{ marginBottom: 36 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
@@ -317,25 +317,25 @@ export default function App() {
           opacity: canEdit ? 1 : 0.92,
         }}>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#0f172a" }}>
                   <th style={{
-                    padding: "16px 20px", textAlign: "left", color: "#64748b",
+                    padding: "10px 12px", textAlign: "left", color: "#64748b",
                     fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155", minWidth: 150,
+                    borderBottom: "1px solid #334155", minWidth: 120,
                   }}>Team Member</th>
                   {CATEGORIES.map(cat => {
                     const col = CATEGORY_COLORS[cat];
                     const count = getColumnCount(cat);
                     return (
                       <th key={cat} style={{
-                        padding: "12px 8px", textAlign: "center",
-                        borderBottom: "1px solid #334155", minWidth: 86,
+                        padding: "8px 4px", textAlign: "center",
+                        borderBottom: "1px solid #334155", minWidth: 60,
                       }}>
-                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                           <span style={{
-                            fontSize: 14, fontWeight: 700, letterSpacing: 0.5,
+                            fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
                             textTransform: "uppercase", color: col.accent,
                           }}>{cat}</span>
                           <input
@@ -373,17 +373,17 @@ export default function App() {
                     );
                   })}
                   <th style={{
-                    padding: "16px 12px", textAlign: "left", color: "#64748b",
+                    padding: "10px 8px", textAlign: "left", color: "#64748b",
                     fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155", minWidth: 180,
+                    borderBottom: "1px solid #334155", minWidth: 140,
                   }}>Comment</th>
                   <th style={{
-                    padding: "16px 12px", textAlign: "center", color: "#475569",
+                    padding: "10px 8px", textAlign: "center", color: "#475569",
                     fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
                     borderBottom: "1px solid #334155",
                   }}>Tasks</th>
                   <th style={{
-                    padding: "16px 12px", textAlign: "center", color: "#475569",
+                    padding: "10px 8px", textAlign: "center", color: "#475569",
                     fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
                     borderBottom: "1px solid #334155",
                   }}>OOO</th>
@@ -403,16 +403,16 @@ export default function App() {
                         opacity: isOoo ? 0.6 : 1,
                       }}
                     >
-                      <td style={{ padding: "14px 20px", borderBottom: "1px solid #1e293b", verticalAlign: "middle" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #1e293b", verticalAlign: "middle" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{
-                            width: 38, height: 38, borderRadius: "50%",
+                            width: 30, height: 30, borderRadius: "50%",
                             background: `hsl(${(pi * 43) % 360}, 60%, 35%)`,
                             border: `2px solid hsl(${(pi * 43) % 360}, 60%, 50%)`,
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0,
+                            fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0,
                           }}>{person[0]}</div>
-                          <span style={{ color: "#e2e8f0", fontWeight: 500, fontSize: 17 }}>{person}</span>
+                          <span style={{ color: "#e2e8f0", fontWeight: 500, fontSize: 15 }}>{person}</span>
                           {isOoo && (
                             <span style={{
                               fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
@@ -429,7 +429,7 @@ export default function App() {
                         const key = `${person}-${cat}`;
                         const hovered = hoveredCell === key;
                         return (
-                          <td key={cat} style={{ padding: "10px 8px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
+                          <td key={cat} style={{ padding: "6px 4px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
                             <button
                               onClick={() => toggle(person, cat)}
                               onMouseEnter={() => setHoveredCell(key)}
@@ -437,7 +437,7 @@ export default function App() {
                               disabled={!canEdit}
                               title={canEdit ? `${active ? "Remove" : "Assign"} ${person} → ${cat}` : "View only"}
                               style={{
-                                width: 36, height: 36, borderRadius: 8,
+                                width: 28, height: 28, borderRadius: 6,
                                 border: active ? `2px solid ${col.accent}` : "1.5px solid #334155",
                                 background: active ? col.bg : (hovered && canEdit ? "#1e293b" : "transparent"),
                                 cursor: canEdit ? "pointer" : "default",
@@ -471,7 +471,7 @@ export default function App() {
                           placeholder={canEdit ? "Add a note…" : "—"}
                           rows={2}
                           style={{
-                            width: "100%", minWidth: 160, maxWidth: 220, resize: canEdit ? "vertical" : "none",
+                            width: "100%", minWidth: 100, maxWidth: 160, resize: canEdit ? "vertical" : "none",
                             background: comments[person] ? "#0f172a" : "transparent",
                             border: `1px solid ${comments[person] ? "#3b82f6" : "#334155"}`,
                             borderRadius: 8, color: "#e2e8f0", fontSize: 12, fontFamily: "inherit",
