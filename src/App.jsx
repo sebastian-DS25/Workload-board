@@ -23,6 +23,13 @@ export default function App() {
   const [hoveredCell, setHoveredCell] = useState(null);
   const [toast, setToast] = useState(null);
   const savingRef = useRef(false);
+  const [workloadColor, setWorkloadColor] = useState("#ef4444");
+
+  function cycleWorkload() {
+    setWorkloadColor(prev =>
+      prev === "#22c55e" ? "#f59e0b" : prev === "#f59e0b" ? "#ef4444" : "#22c55e"
+    );
+  }
 
   const applyState = useCallback((state) => {
     setAssignments(state.assignments);
@@ -192,6 +199,20 @@ export default function App() {
           {loadError && (
             <p style={{ color: "#fca5a5", fontSize: 12, margin: "0 0 12px 0" }}>{loadError}</p>
           )}
+          <div
+            onClick={cycleWorkload}
+            title="Click to change workload status"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 10,
+              background: workloadColor, borderRadius: 8,
+              padding: "6px 16px", marginBottom: 16, cursor: "pointer",
+              fontWeight: 700, fontSize: 14, color: "#fff",
+              boxShadow: `0 0 12px ${workloadColor}80`,
+              userSelect: "none",
+            }}
+          >
+            Workload
+          </div>
 
           {editingTitle && canEdit ? (
             <input
