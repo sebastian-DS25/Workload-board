@@ -3,7 +3,6 @@ import { PEOPLE, CATEGORIES, CATEGORY_COLORS } from "./lib/constants.js";
 import { applyParsedState, initComments, initEmailCounts, initOooStatus } from "./lib/boardState.js";
 import { getAccessMode } from "./lib/access.js";
 import {
-  cloudEnabled,
   loadBoard,
   upsertAssignment,
   saveBoardMeta,
@@ -11,12 +10,11 @@ import {
 } from "./lib/boardStorage.js";
 
 export default function App() {
-  const { isView, canEdit } = getAccessMode();
+  const { canEdit } = getAccessMode();
   const [assignments, setAssignments] = useState(null);
   const [comments, setComments] = useState(null);
   const [emailCounts, setEmailCounts] = useState({});
   const [oooStatus, setOooStatus] = useState({});
-  const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -86,7 +84,6 @@ export default function App() {
   async function saveMeta(titleData, commentsData, toastMsg = "Saved ✓") {
     if (!canEdit) return;
     savingRef.current = true;
-    setSaving(true);
     try {
       await saveBoardMeta(titleData, commentsData, emailCounts, oooStatus);
       showToast(toastMsg);
@@ -95,7 +92,6 @@ export default function App() {
       showToast("Save failed — try again");
     } finally {
       savingRef.current = false;
-      setSaving(false);
     }
   }
 
@@ -107,7 +103,6 @@ export default function App() {
       [person]: { ...prev[person], [cat]: active },
     }));
     savingRef.current = true;
-    setSaving(true);
     try {
       await upsertAssignment(person, cat, active);
     } catch (err) {
@@ -119,7 +114,6 @@ export default function App() {
       showToast("Save failed — try again");
     } finally {
       savingRef.current = false;
-      setSaving(false);
     }
   }
 
@@ -176,17 +170,6 @@ export default function App() {
     );
   }
 
-  const statusColor = loadError ? "#ef4444" : isView ? "#f59e0b" : cloudEnabled ? "#22c55e" : "#64748b";
-  const statusText = loadError
-    ? "Offline / load error"
-    : isView
-      ? "View only — changes disabled"
-      : canEdit
-        ? cloudEnabled
-          ? "Live shared board — changes sync instantly for everyone"
-          : "Local mode — add Supabase keys to .env (see DEPLOY.md)"
-        : "View only — changes disabled";
-
   const totalEmails = Object.values(emailCounts).reduce((a, b) => a + b, 0);
 
   return (
@@ -194,7 +177,7 @@ export default function App() {
       minHeight: "100vh",
       background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
       fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-      padding: "24px 16px",
+      padding: "16px",
       position: "relative",
     }}>
       <div style={{
@@ -214,21 +197,7 @@ export default function App() {
 
       <div style={{ position: "relative", zIndex: 1, maxWidth: "100%", margin: "0 auto" }}>
 
-        <div style={{ marginBottom: 36 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
-            <div style={{
-              width: 8, height: 8, borderRadius: "50%",
-              background: statusColor,
-              boxShadow: `0 0 8px ${statusColor}`,
-            }} />
-            <span style={{ color: "#64748b", fontSize: 11, letterSpacing: 3, textTransform: "uppercase", fontWeight: 600 }}>
-              Workload Board
-            </span>
-            {saving && <span style={{ color: "#475569", fontSize: 11 }}>saving…</span>}
-          </div>
-
-          <p style={{ color: "#94a3b8", fontSize: 12, margin: "0 0 12px 0" }}>{statusText}</p>
-
+        <div style={{ marginBottom: 20 }}>
           {loadError && (
             <p style={{ color: "#fca5a5", fontSize: 12, margin: "0 0 12px 0" }}>{loadError}</p>
           )}
@@ -317,13 +286,13 @@ export default function App() {
           opacity: canEdit ? 1 : 0.92,
         }}>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
               <thead>
                 <tr style={{ background: "#0f172a" }}>
                   <th style={{
                     padding: "10px 12px", textAlign: "left", color: "#64748b",
                     fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155", minWidth: 120,
+                    borderBottom: "1px solid #334155", width: 140,
                   }}>Team Member</th>
                   {CATEGORIES.map(cat => {
                     const col = CATEGORY_COLORS[cat];
@@ -331,7 +300,7 @@ export default function App() {
                     return (
                       <th key={cat} style={{
                         padding: "8px 4px", textAlign: "center",
-                        borderBottom: "1px solid #334155", minWidth: 60,
+                        borderBottom: "1px solid #334155",
                       }}>
                         <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                           <span style={{
@@ -375,13 +344,8 @@ export default function App() {
                   <th style={{
                     padding: "10px 8px", textAlign: "left", color: "#64748b",
                     fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155", minWidth: 140,
+                    borderBottom: "1px solid #334155", width: 160,
                   }}>Comment</th>
-                  <th style={{
-                    padding: "10px 8px", textAlign: "center", color: "#475569",
-                    fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155",
-                  }}>Tasks</th>
                   <th style={{
                     padding: "10px 8px", textAlign: "center", color: "#475569",
                     fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
@@ -391,7 +355,6 @@ export default function App() {
               </thead>
               <tbody>
                 {PEOPLE.map((person, pi) => {
-                  const rowCount = getRowCount(person);
                   const isOoo = oooStatus[person] ?? false;
                   return (
                     <tr
@@ -479,15 +442,6 @@ export default function App() {
                             cursor: canEdit ? "text" : "default",
                           }}
                         />
-                      </td>
-                      <td style={{ padding: "10px 12px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
-                        <span style={{
-                          background: rowCount > 0 ? "#3b82f620" : "transparent",
-                          color: rowCount > 0 ? "#60a5fa" : "#475569",
-                          border: `1px solid ${rowCount > 0 ? "#3b82f6" : "#334155"}`,
-                          borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: 700,
-                          display: "inline-block", minWidth: 28,
-                        }}>{rowCount}</span>
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
                         <button
