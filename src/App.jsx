@@ -142,6 +142,23 @@ export default function App() {
     }
   }
 
+    async function resetBoard() {
+    if (!window.confirm("Reset all assignments? Comments and OOO status will be kept.")) return;
+    const fresh = {};
+    for (const person of PEOPLE) {
+      fresh[person] = {};
+      for (const cat of CATEGORIES) {
+        fresh[person][cat] = false;
+      }
+    }
+    setAssignments(fresh);
+    for (const person of PEOPLE) {
+      for (const cat of CATEGORIES) {
+        await upsertAssignment(person, cat, false);
+      }
+    }
+    showToast("Board reset ✓");
+  }
   async function toggleOoo(person) {
     if (!canEdit) return;
     const newOoo = { ...oooStatus, [person]: !oooStatus[person] };
@@ -249,33 +266,21 @@ export default function App() {
                   {totalEmails} emails
                 </span>
               </div>
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 28 }}>
-          {CATEGORIES.map(cat => {
-            const count = getColumnCount(cat);
-            const col = CATEGORY_COLORS[cat];
-            return (
-              <div key={cat} style={{
-                background: count > 0 ? col.accent : "#1e293b",
-                color: count > 0 ? "#fff" : "#475569",
-                border: `1px solid ${count > 0 ? col.accent : "#334155"}`,
-                borderRadius: 20, padding: "4px 12px", fontSize: 12, fontWeight: 600,
-                display: "flex", alignItems: "center", gap: 6,
-              }}>
-                <span>{cat}</span>
-                {count > 0 && (
-                  <span style={{
-                    background: "rgba(255,255,255,0.25)", borderRadius: 10,
-                    padding: "0px 6px", fontSize: 11,
-                  }}>{count}</span>
-                )}
+              <div
+                onClick={cycleWorkload}
+                title="Click to change workload status"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  background: workloadColor, borderRadius: 8,
+                  padding: "6px 16px", cursor: "pointer",
+                  fontWeight: 700, fontSize: 14, color: "#fff",
+                  boxShadow: `0 0 12px ${workloadColor}80`,
+                  userSelect: "none",
+                }}
+              >
+                Workload
               </div>
-            );
-          })}
-        </div>
+            </div>
 
         <div style={{
           background: "#1e293b",
