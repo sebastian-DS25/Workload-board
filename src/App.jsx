@@ -40,13 +40,11 @@ export default function App() {
 
   useEffect(() => {
     let unsubscribe = () => {};
-
     async function init() {
       try {
         const state = await loadBoard();
         applyState(state);
         setLoadError(null);
-
         unsubscribe = subscribeBoard({
           onAssignmentChange: ({ person, category, active }) => {
             if (savingRef.current) return;
@@ -71,7 +69,6 @@ export default function App() {
         setLoaded(true);
       }
     }
-
     init();
     return () => unsubscribe();
   }, [applyState]);
@@ -142,7 +139,19 @@ export default function App() {
     }
   }
 
-    async function resetBoard() {
+  async function toggleOoo(person) {
+    if (!canEdit) return;
+    const newOoo = { ...oooStatus, [person]: !oooStatus[person] };
+    setOooStatus(newOoo);
+    try {
+      await saveBoardMeta(teamTitle, comments, emailCounts, newOoo);
+    } catch (err) {
+      setOooStatus(oooStatus);
+      showToast("Save failed — try again");
+    }
+  }
+
+  async function resetBoard() {
     if (!window.confirm("Reset all assignments? Comments and OOO status will be kept.")) return;
     const fresh = {};
     for (const person of PEOPLE) {
@@ -158,17 +167,6 @@ export default function App() {
       }
     }
     showToast("Board reset ✓");
-  }
-  async function toggleOoo(person) {
-    if (!canEdit) return;
-    const newOoo = { ...oooStatus, [person]: !oooStatus[person] };
-    setOooStatus(newOoo);
-    try {
-      await saveBoardMeta(teamTitle, comments, emailCounts, newOoo);
-    } catch (err) {
-      setOooStatus(oooStatus);
-      showToast("Save failed — try again");
-    }
   }
 
   function getColumnCount(cat) {
@@ -218,20 +216,6 @@ export default function App() {
           {loadError && (
             <p style={{ color: "#fca5a5", fontSize: 12, margin: "0 0 12px 0" }}>{loadError}</p>
           )}
-          <div
-            onClick={cycleWorkload}
-            title="Click to change workload status"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 10,
-              background: workloadColor, borderRadius: 8,
-              padding: "6px 16px", marginBottom: 16, cursor: "pointer",
-              fontWeight: 700, fontSize: 14, color: "#fff",
-              boxShadow: `0 0 12px ${workloadColor}80`,
-              userSelect: "none",
-            }}
-          >
-            Workload
-          </div>
 
           {editingTitle && canEdit ? (
             <input
@@ -247,7 +231,7 @@ export default function App() {
               }}
             />
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <h1
                 onClick={() => canEdit && setEditingTitle(true)}
                 style={{
@@ -280,7 +264,22 @@ export default function App() {
               >
                 Workload
               </div>
+              <div
+                onClick={resetBoard}
+                title="Reset all assignments"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  background: "#1e293b", border: "1px solid #334155",
+                  borderRadius: 8, padding: "6px 16px", cursor: "pointer",
+                  fontWeight: 700, fontSize: 14, color: "#94a3b8",
+                  userSelect: "none",
+                }}
+              >
+                🔄 Reset
+              </div>
             </div>
+          )}
+        </div>
 
         <div style={{
           background: "#1e293b",
@@ -354,7 +353,7 @@ export default function App() {
                   <th style={{
                     padding: "10px 8px", textAlign: "center", color: "#475569",
                     fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155",
+                    borderBottom: "1px solid #334155", width: 50,
                   }}>OOO</th>
                 </tr>
               </thead>
@@ -475,7 +474,7 @@ export default function App() {
             display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8,
           }}>
             <span style={{ color: "#475569", fontSize: 11 }}>
-              {"Shared board · assign tasks and comments · auto-saves to the cloud"}
+              Shared board · assign tasks and comments · auto-saves to the cloud
             </span>
             <span style={{ color: "#334155", fontSize: 11 }}>
               {PEOPLE.length} members · {CATEGORIES.length} categories
