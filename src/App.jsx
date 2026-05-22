@@ -152,7 +152,7 @@ export default function App() {
   }
 
   async function resetBoard() {
-    if (!window.confirm("Reset all assignments? Comments and OOO status will be kept.")) return;
+    if (!window.confirm("Reset all assignments and email counts? Comments and OOO status will be kept.")) return;
     const fresh = {};
     for (const person of PEOPLE) {
       fresh[person] = {};
@@ -161,11 +161,17 @@ export default function App() {
       }
     }
     setAssignments(fresh);
+    const freshCounts = {};
+    for (const cat of CATEGORIES) {
+      freshCounts[cat] = 0;
+    }
+    setEmailCounts(freshCounts);
     for (const person of PEOPLE) {
       for (const cat of CATEGORIES) {
         await upsertAssignment(person, cat, false);
       }
     }
+    await saveBoardMeta(teamTitle, comments, freshCounts, oooStatus);
     showToast("Board reset ✓");
   }
 
@@ -232,14 +238,6 @@ export default function App() {
             />
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <h1
-                onClick={() => canEdit && setEditingTitle(true)}
-                style={{
-                  color: "#f1f5f9", fontSize: 28, fontWeight: 700, margin: 0,
-                  letterSpacing: -0.5, cursor: canEdit ? "pointer" : "default",
-                }}
-                title={canEdit ? "Click to edit title" : undefined}
-              >{teamTitle}</h1>
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
                 background: "#1e293b", border: "1px solid #334155",
