@@ -419,8 +419,9 @@ export default function App() {
                                 </svg>
                               ) : (
                                 <div style={{
-                                  width: 6, height: 6, borderRadius: "50%",
-                                  background: hovered && canEdit ? "#475569" : "#334155",
+                                  width: 8, height: 8, borderRadius: "50%",
+                                  background: hovered && canEdit ? "#94a3b8" : "#64748b",
+                                  boxShadow: hovered && canEdit ? "0 0 6px #94a3b8" : "none",
                                 }} />
                               )}
                             </button>
