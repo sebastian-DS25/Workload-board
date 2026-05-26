@@ -403,7 +403,7 @@ export default function App() {
                               title={canEdit ? `${active ? "Remove" : "Assign"} ${person} → ${cat}` : "View only"}
                               style={{
                                 width: 28, height: 28, borderRadius: 6,
-                                border: active ? `2px solid ${col.accent}` : "1.5px solid #334155",
+                                border: active ? `2px solid ${col.accent}` : "1.5px solid #64748b",
                                 background: active ? col.bg : (hovered && canEdit ? "#1e293b" : "transparent"),
                                 cursor: canEdit ? "pointer" : "default",
                                 display: "flex", alignItems: "center", justifyContent: "center",
