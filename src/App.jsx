@@ -420,7 +420,8 @@ export default function App() {
                               ) : (
                                 <div style={{
                                   width: 8, height: 8, borderRadius: "50%",
-                                  background: hovered && canEdit ? "#94a3b8" : "#64748b",
+                                  background: "transparent",
+                                  border: "2px solid #94a3b8",
                                   boxShadow: hovered && canEdit ? "0 0 6px #94a3b8" : "none",
                                 }} />
                               )}
