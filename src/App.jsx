@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { PEOPLE, CATEGORIES, CATEGORY_COLORS } from "./lib/constants.js";
-import { applyParsedState, initComments, initEmailCounts, initOooStatus } from "./lib/boardState.js";
+import { applyParsedState, initAssignments, initComments, initEmailCounts, initOooStatus } from "./lib/boardState.js";
 import { getAccessMode } from "./lib/access.js";
 import {
   loadBoard,
@@ -9,12 +9,28 @@ import {
   subscribeBoard,
 } from "./lib/boardStorage.js";
 
+function needsDailyReset(lastReset) {
+  const now = new Date();
+  const todayAt5 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 5, 0, 0, 0);
+  if (now < todayAt5) return false;
+  if (!lastReset) return true;
+  return new Date(lastReset) < todayAt5;
+}
+
+function formatLastReset(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
 export default function App() {
   const { canEdit } = getAccessMode();
   const [assignments, setAssignments] = useState(null);
   const [comments, setComments] = useState(null);
   const [emailCounts, setEmailCounts] = useState({});
   const [oooStatus, setOooStatus] = useState({});
+  const [coordinator, setCoordinator] = useState(null);
+  const [lastReset, setLastReset] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -36,6 +52,8 @@ export default function App() {
     setTeamTitle(state.title);
     setEmailCounts(state.emailCounts);
     setOooStatus(state.oooStatus);
+    setCoordinator(state.coordinator ?? null);
+    setLastReset(state.lastReset ?? null);
   }, []);
 
   useEffect(() => {
@@ -45,6 +63,28 @@ export default function App() {
         const state = await loadBoard();
         applyState(state);
         setLoadError(null);
+
+        // Auto-reset at 05:00 daily — keeps comments, OOO status, coordinator
+        if (canEdit && needsDailyReset(state.lastReset)) {
+          savingRef.current = true;
+          try {
+            const freshAssignments = initAssignments();
+            const freshCounts = initEmailCounts();
+            setAssignments(freshAssignments);
+            setEmailCounts(freshCounts);
+            const newLastReset = new Date().toISOString();
+            setLastReset(newLastReset);
+            await Promise.all(
+              PEOPLE.flatMap(p => CATEGORIES.map(c => upsertAssignment(p, c, false)))
+            );
+            await saveBoardMeta(state.title, state.comments, freshCounts, state.oooStatus, state.coordinator, newLastReset);
+          } catch (err) {
+            console.error("Auto-reset failed:", err);
+          } finally {
+            savingRef.current = false;
+          }
+        }
+
         unsubscribe = subscribeBoard({
           onAssignmentChange: ({ person, category, active }) => {
             if (savingRef.current) return;
@@ -53,12 +93,14 @@ export default function App() {
               [person]: { ...prev[person], [category]: active },
             }));
           },
-          onMetaChange: ({ title, comments: c, emailCounts: ec, oooStatus: oos }) => {
+          onMetaChange: ({ title, comments: c, emailCounts: ec, oooStatus: oos, coordinator: coord, lastReset: lr }) => {
             if (savingRef.current) return;
             setTeamTitle(title);
             setComments({ ...initComments(), ...(c || {}) });
             setEmailCounts({ ...initEmailCounts(), ...(ec || {}) });
             setOooStatus({ ...initOooStatus(), ...(oos || {}) });
+            setCoordinator(coord ?? null);
+            setLastReset(lr ?? null);
           },
         });
       } catch (err) {
@@ -71,7 +113,7 @@ export default function App() {
     }
     init();
     return () => unsubscribe();
-  }, [applyState]);
+  }, [applyState, canEdit]);
 
   function showToast(msg) {
     setToast(msg);
@@ -82,7 +124,7 @@ export default function App() {
     if (!canEdit) return;
     savingRef.current = true;
     try {
-      await saveBoardMeta(titleData, commentsData, emailCounts, oooStatus);
+      await saveBoardMeta(titleData, commentsData, emailCounts, oooStatus, coordinator, lastReset);
       showToast(toastMsg);
     } catch (err) {
       console.error(err);
@@ -133,7 +175,7 @@ export default function App() {
   async function saveEmailCounts(newCounts) {
     if (!canEdit) return;
     try {
-      await saveBoardMeta(teamTitle, comments, newCounts, oooStatus);
+      await saveBoardMeta(teamTitle, comments, newCounts, oooStatus, coordinator, lastReset);
     } catch (err) {
       showToast("Save failed — try again");
     }
@@ -144,34 +186,37 @@ export default function App() {
     const newOoo = { ...oooStatus, [person]: !oooStatus[person] };
     setOooStatus(newOoo);
     try {
-      await saveBoardMeta(teamTitle, comments, emailCounts, newOoo);
+      await saveBoardMeta(teamTitle, comments, emailCounts, newOoo, coordinator, lastReset);
     } catch (err) {
       setOooStatus(oooStatus);
       showToast("Save failed — try again");
     }
   }
 
+  async function toggleCoordinator(person) {
+    if (!canEdit) return;
+    const newCoord = coordinator === person ? null : person;
+    setCoordinator(newCoord);
+    try {
+      await saveBoardMeta(teamTitle, comments, emailCounts, oooStatus, newCoord, lastReset);
+    } catch (err) {
+      setCoordinator(coordinator);
+      showToast("Save failed — try again");
+    }
+  }
+
   async function resetBoard() {
-    if (!window.confirm("Reset all assignments and email counts? Comments and OOO status will be kept.")) return;
-    const fresh = {};
-    for (const person of PEOPLE) {
-      fresh[person] = {};
-      for (const cat of CATEGORIES) {
-        fresh[person][cat] = false;
-      }
-    }
-    setAssignments(fresh);
-    const freshCounts = {};
-    for (const cat of CATEGORIES) {
-      freshCounts[cat] = 0;
-    }
+    if (!window.confirm("Reset all assignments and email counts? Comments, OOO status and coordinator will be kept.")) return;
+    const freshAssignments = initAssignments();
+    const freshCounts = initEmailCounts();
+    const newLastReset = new Date().toISOString();
+    setAssignments(freshAssignments);
     setEmailCounts(freshCounts);
-    for (const person of PEOPLE) {
-      for (const cat of CATEGORIES) {
-        await upsertAssignment(person, cat, false);
-      }
-    }
-    await saveBoardMeta(teamTitle, comments, freshCounts, oooStatus);
+    setLastReset(newLastReset);
+    await Promise.all(
+      PEOPLE.flatMap(p => CATEGORIES.map(c => upsertAssignment(p, c, false)))
+    );
+    await saveBoardMeta(teamTitle, comments, freshCounts, oooStatus, coordinator, newLastReset);
     showToast("Board reset ✓");
   }
 
@@ -192,6 +237,7 @@ export default function App() {
   }
 
   const totalEmails = Object.values(emailCounts).reduce((a, b) => a + b, 0);
+  const lastResetLabel = formatLastReset(lastReset);
 
   return (
     <div style={{
@@ -301,12 +347,12 @@ export default function App() {
                     const count = getColumnCount(cat);
                     return (
                       <th key={cat} style={{
-                        padding: "8px 4px", textAlign: "center",
+                        padding: "12px 6px", textAlign: "center",
                         borderBottom: "1px solid #334155",
                       }}>
-                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
                           <span style={{
-                            fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
+                            fontSize: 14, fontWeight: 700, letterSpacing: 0.5,
                             textTransform: "uppercase", color: col.accent,
                           }}>{cat}</span>
                           <input
@@ -321,12 +367,12 @@ export default function App() {
                             readOnly={!canEdit}
                             title={canEdit ? "Emails in this inbox" : undefined}
                             style={{
-                              width: 46, textAlign: "center",
+                              width: 54, textAlign: "center",
                               background: "transparent",
                               border: "1px solid #334155",
                               borderRadius: 6,
                               color: (emailCounts[cat] ?? 0) > 0 ? "#94a3b8" : "#475569",
-                              fontSize: 11, padding: "2px 4px",
+                              fontSize: 13, padding: "3px 6px",
                               outline: "none",
                               cursor: canEdit ? "text" : "default",
                             }}
@@ -352,19 +398,27 @@ export default function App() {
                     padding: "10px 8px", textAlign: "center", color: "#475569",
                     fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
                     borderBottom: "1px solid #334155", width: 50,
+                  }}>Coord</th>
+                  <th style={{
+                    padding: "10px 8px", textAlign: "center", color: "#475569",
+                    fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
+                    borderBottom: "1px solid #334155", width: 50,
                   }}>OOO</th>
                 </tr>
               </thead>
               <tbody>
                 {PEOPLE.map((person, pi) => {
                   const isOoo = oooStatus[person] ?? false;
+                  const isCoord = coordinator === person;
                   return (
                     <tr
                       key={person}
                       style={{
                         background: isOoo
                           ? "rgba(100,116,139,0.12)"
-                          : pi % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                          : isCoord
+                            ? "rgba(251,191,36,0.07)"
+                            : pi % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
                         opacity: isOoo ? 0.6 : 1,
                       }}
                     >
@@ -378,6 +432,14 @@ export default function App() {
                             fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0,
                           }}>{person[0]}</div>
                           <span style={{ color: "#e2e8f0", fontWeight: 500, fontSize: 15 }}>{person}</span>
+                          {isCoord && (
+                            <span style={{
+                              fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+                              color: "#fbbf24", background: "#451a0380",
+                              padding: "2px 5px", borderRadius: 4,
+                              textTransform: "uppercase", border: "1px solid #fbbf2440",
+                            }}>Coord</span>
+                          )}
                           {isOoo && (
                             <span style={{
                               fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
@@ -394,7 +456,7 @@ export default function App() {
                         const key = `${person}-${cat}`;
                         const hovered = hoveredCell === key;
                         return (
-                          <td key={cat} style={{ padding: "6px 4px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
+                          <td key={cat} style={{ padding: "4px 2px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
                             <button
                               onClick={() => toggle(person, cat)}
                               onMouseEnter={() => setHoveredCell(key)}
@@ -402,7 +464,7 @@ export default function App() {
                               disabled={!canEdit}
                               title={canEdit ? `${active ? "Remove" : "Assign"} ${person} → ${cat}` : "View only"}
                               style={{
-                                width: 28, height: 28, borderRadius: 6,
+                                width: 22, height: 22, borderRadius: 5,
                                 border: active ? `2px solid ${col.accent}` : "1.5px solid #64748b",
                                 background: active ? col.bg : (hovered && canEdit ? "#1e293b" : "transparent"),
                                 cursor: canEdit ? "pointer" : "default",
@@ -410,19 +472,19 @@ export default function App() {
                                 margin: "0 auto",
                                 opacity: canEdit ? 1 : 0.85,
                                 transform: hovered && !active && canEdit ? "scale(1.15)" : active ? "scale(1.05)" : "scale(1)",
-                                boxShadow: active ? `0 0 12px ${col.accent}40` : "none",
+                                boxShadow: active ? `0 0 8px ${col.accent}40` : "none",
                               }}
                             >
                               {active ? (
-                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                                  <path d="M2 7L6 11L12 3" stroke={col.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                                  <path d="M2 7L6 11L12 3" stroke={col.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                               ) : (
                                 <div style={{
-                                  width: 8, height: 8, borderRadius: "50%",
+                                  width: 6, height: 6, borderRadius: "50%",
                                   background: "transparent",
-                                  border: "2px solid #94a3b8",
-                                  boxShadow: hovered && canEdit ? "0 0 6px #94a3b8" : "none",
+                                  border: "1.5px solid #94a3b8",
+                                  boxShadow: hovered && canEdit ? "0 0 4px #94a3b8" : "none",
                                 }} />
                               )}
                             </button>
@@ -447,7 +509,22 @@ export default function App() {
                           }}
                         />
                       </td>
-                      <td style={{ padding: "10px 12px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
+                      <td style={{ padding: "10px 8px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
+                        <button
+                          onClick={() => toggleCoordinator(person)}
+                          disabled={!canEdit}
+                          title={isCoord ? "Remove as coordinator" : "Set as coordinator"}
+                          style={{
+                            background: "none", border: "none",
+                            cursor: canEdit ? "pointer" : "default",
+                            fontSize: 18, padding: "4px",
+                            opacity: isCoord ? 1 : 0.18,
+                            filter: isCoord ? "none" : "grayscale(100%)",
+                            transition: "opacity 0.15s, filter 0.15s",
+                          }}
+                        >👑</button>
+                      </td>
+                      <td style={{ padding: "10px 8px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
                         <button
                           onClick={() => toggleOoo(person)}
                           disabled={!canEdit}
@@ -470,14 +547,16 @@ export default function App() {
           </div>
 
           <div style={{
-            padding: "12px 20px", borderTop: "1px solid #334155",
+            padding: "10px 16px", borderTop: "1px solid #334155",
             display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8,
           }}>
             <span style={{ color: "#475569", fontSize: 11 }}>
-              Shared board · assign tasks and comments · auto-saves to the cloud
+              Shared board · auto-saves to the cloud
             </span>
-            <span style={{ color: "#334155", fontSize: 11 }}>
-              {PEOPLE.length} members · {CATEGORIES.length} categories
+            <span style={{ color: "#475569", fontSize: 11 }}>
+              {lastResetLabel
+                ? `Last reset: ${lastResetLabel}`
+                : "Not yet reset today"}
             </span>
           </div>
         </div>

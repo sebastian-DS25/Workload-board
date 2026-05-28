@@ -48,5 +48,7 @@ export function applyParsedState(parsed) {
     comments: { ...initComments(), ...(parsed?.comments || {}) },
     emailCounts: { ...initEmailCounts(), ...(parsed?.emailCounts || {}) },
     oooStatus: { ...initOooStatus(), ...(parsed?.oooStatus || {}) },
+    coordinator: parsed?.coordinator ?? null,
+    lastReset: parsed?.lastReset ?? null,
   };
 }

@@ -58,6 +58,8 @@ export async function loadBoard() {
     comments: { ...initComments(), ...(metaRes.data?.comments || {}) },
     emailCounts: { ...initEmailCounts(), ...(metaRes.data?.email_counts || {}) },
     oooStatus: { ...initOooStatus(), ...(metaRes.data?.ooo_status || {}) },
+    coordinator: metaRes.data?.coordinator ?? null,
+    lastReset: metaRes.data?.last_reset ?? null,
   };
 }
 
@@ -82,10 +84,10 @@ export async function upsertAssignment(person, category, active) {
   if (error) throw error;
 }
 
-export async function saveBoardMeta(title, comments, emailCounts, oooStatus) {
+export async function saveBoardMeta(title, comments, emailCounts, oooStatus, coordinator = null, lastReset = null) {
   if (!supabase) {
     const state = loadLocal();
-    saveLocal({ ...state, title, comments, emailCounts, oooStatus });
+    saveLocal({ ...state, title, comments, emailCounts, oooStatus, coordinator, lastReset });
     return;
   }
 
@@ -95,6 +97,8 @@ export async function saveBoardMeta(title, comments, emailCounts, oooStatus) {
     comments,
     email_counts: emailCounts,
     ooo_status: oooStatus,
+    coordinator,
+    last_reset: lastReset,
     updated_at: new Date().toISOString(),
   });
 
@@ -139,6 +143,8 @@ export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
           comments: meta.comments,
           emailCounts: meta.email_counts,
           oooStatus: meta.ooo_status,
+          coordinator: meta.coordinator ?? null,
+          lastReset: meta.last_reset ?? null,
         });
       }
     )
