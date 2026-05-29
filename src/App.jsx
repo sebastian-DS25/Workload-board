@@ -367,12 +367,12 @@ export default function App() {
                             readOnly={!canEdit}
                             title={canEdit ? "Emails in this inbox" : undefined}
                             style={{
-                              width: 54, textAlign: "center",
+                              width: 108, textAlign: "center",
                               background: "transparent",
                               border: "1px solid #334155",
                               borderRadius: 6,
                               color: (emailCounts[cat] ?? 0) > 0 ? "#94a3b8" : "#475569",
-                              fontSize: 13, padding: "3px 6px",
+                              fontSize: 26, padding: "6px 12px",
                               outline: "none",
                               cursor: canEdit ? "text" : "default",
                             }}
@@ -380,7 +380,7 @@ export default function App() {
                           <span style={{
                             width: 20, height: 20, borderRadius: "50%",
                             background: count > 0 ? col.accent : "#1e293b",
-                            color: count > 0 ? "#fff" : "#475569",
+                            color: "#ffffff",
                             fontSize: 10, fontWeight: 700,
                             display: "flex", alignItems: "center", justifyContent: "center",
                             border: `1px solid ${count > 0 ? col.accent : "#334155"}`,
