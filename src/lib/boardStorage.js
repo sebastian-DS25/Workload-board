@@ -1,9 +1,7 @@
-import { STORAGE_KEY } from "./constants.js";
+import { STORAGE_KEY, PEOPLE } from "./constants.js";
 import {
   initAssignments,
   initComments,
-  initEmailCounts,
-  initOooStatus,
   defaultBoardPayload,
   applyParsedState,
 } from "./boardState.js";
@@ -27,6 +25,16 @@ function rowsToAssignments(rows) {
   return assignments;
 }
 
+function todayString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getNextCoordinator(current) {
+  const index = PEOPLE.indexOf(current);
+  const nextIndex = (index === -1 ? 0 : index + 1) % PEOPLE.length;
+  return PEOPLE[nextIndex];
+}
+
 function loadLocal() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -46,20 +54,49 @@ export async function loadBoard() {
 
   const [assignmentsRes, metaRes] = await Promise.all([
     supabase.from("assignments").select("person, category, active"),
-    supabase.from("board_meta").select("*").eq("id", META_ID).maybeSingle(),
+    supabase
+      .from("board_meta")
+      .select("title, comments, workload_color, coordinator, coordinator_date")
+      .eq("id", META_ID)
+      .maybeSingle(),
   ]);
 
   if (assignmentsRes.error) throw assignmentsRes.error;
   if (metaRes.error) throw metaRes.error;
 
+  const today = todayString();
+  const storedDate = metaRes.data?.coordinator_date ?? null;
+  let coordinator = metaRes.data?.coordinator ?? PEOPLE[0];
+  let coordinatorDate = storedDate;
+
+  if (storedDate && storedDate < today) {
+    coordinator = getNextCoordinator(coordinator);
+    coordinatorDate = today;
+    await supabase.from("board_meta").upsert({
+      id: META_ID,
+      coordinator,
+      coordinator_date: coordinatorDate,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  if (!storedDate) {
+    coordinatorDate = today;
+    await supabase.from("board_meta").upsert({
+      id: META_ID,
+      coordinator,
+      coordinator_date: coordinatorDate,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
   return {
     assignments: rowsToAssignments(assignmentsRes.data),
     title: metaRes.data?.title ?? defaultBoardPayload().title,
     comments: { ...initComments(), ...(metaRes.data?.comments || {}) },
-    emailCounts: { ...initEmailCounts(), ...(metaRes.data?.email_counts || {}) },
-    oooStatus: { ...initOooStatus(), ...(metaRes.data?.ooo_status || {}) },
-    coordinator: metaRes.data?.coordinator ?? null,
-    lastReset: metaRes.data?.last_reset ?? null,
+    workloadColor: metaRes.data?.workload_color ?? "#ef4444",
+    coordinator,
+    coordinatorDate,
   };
 }
 
@@ -84,10 +121,12 @@ export async function upsertAssignment(person, category, active) {
   if (error) throw error;
 }
 
-export async function saveBoardMeta(title, comments, emailCounts, oooStatus, coordinator = null, lastReset = null) {
+export async function saveBoardMeta(title, comments, workloadColor, coordinator) {
+  const today = todayString();
+
   if (!supabase) {
     const state = loadLocal();
-    saveLocal({ ...state, title, comments, emailCounts, oooStatus, coordinator, lastReset });
+    saveLocal({ ...state, title, comments, workloadColor, coordinator, coordinatorDate: today });
     return;
   }
 
@@ -95,10 +134,9 @@ export async function saveBoardMeta(title, comments, emailCounts, oooStatus, coo
     id: META_ID,
     title,
     comments,
-    email_counts: emailCounts,
-    ooo_status: oooStatus,
+    workload_color: workloadColor,
     coordinator,
-    last_reset: lastReset,
+    coordinator_date: today,
     updated_at: new Date().toISOString(),
   });
 
@@ -111,21 +149,20 @@ export async function saveBoard(payload) {
     saveLocal(payload);
     return;
   }
-  await saveBoardMeta(payload.title, payload.comments);
+  await saveBoardMeta(payload.title, payload.comments, payload.workloadColor, payload.coordinator);
 }
 
 export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
   if (!supabase) return () => {};
 
   const channel = supabase
-    .channel(`workload-board-realtime-${Date.now()}`)
+    .channel("workload-board-realtime")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "assignments" },
       (payload) => {
         const row = payload.new ?? payload.old;
         if (!row?.person || !row?.category) return;
-
         onAssignmentChange({
           person: row.person,
           category: row.category,
@@ -141,10 +178,9 @@ export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
         if (meta) onMetaChange({
           title: meta.title,
           comments: meta.comments,
-          emailCounts: meta.email_counts,
-          oooStatus: meta.ooo_status,
-          coordinator: meta.coordinator ?? null,
-          lastReset: meta.last_reset ?? null,
+          workloadColor: meta.workload_color,
+          coordinator: meta.coordinator,
+          coordinatorDate: meta.coordinator_date,
         });
       }
     )
