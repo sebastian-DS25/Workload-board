@@ -11,3 +11,15 @@ export function getAccessMode() {
   };
 }
 
+export function buildShareUrls() {
+  const base = window.location.origin + window.location.pathname;
+  const viewUrl = `${base}?mode=view`;
+  const editUrl = EDIT_KEY
+    ? `${base}?key=${EDIT_KEY}`
+    : base;
+  return { viewUrl, editUrl };
+}
+
+export function copyText(text) {
+  return navigator.clipboard.writeText(text);
+}
