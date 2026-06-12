@@ -46,7 +46,7 @@ export async function loadBoard() {
     supabase.from("assignments").select("person, category, active"),
     supabase
       .from("board_meta")
-      .select("title, comments, email_counts, ooo_status")
+      .select("title, comments, email_counts, ooo_status, workload_color")
       .eq("id", META_ID)
       .maybeSingle(),
   ]);
@@ -60,6 +60,7 @@ export async function loadBoard() {
     comments: { ...initComments(), ...(metaRes.data?.comments || {}) },
     emailCounts: { ...initEmailCounts(), ...(metaRes.data?.email_counts || {}) },
     oooStatus: { ...initOooStatus(), ...(metaRes.data?.ooo_status || {}) },
+    workloadColor: metaRes.data?.workload_color ?? "#ef4444",
   };
 }
 
@@ -81,10 +82,10 @@ export async function upsertAssignment(person, category, active) {
   if (error) throw error;
 }
 
-export async function saveBoardMeta(title, comments, emailCounts, oooStatus) {
+export async function saveBoardMeta(title, comments, emailCounts, oooStatus, workloadColor) {
   if (!supabase) {
     const state = loadLocal();
-    saveLocal({ ...state, title, comments, emailCounts, oooStatus });
+    saveLocal({ ...state, title, comments, emailCounts, oooStatus, workloadColor });
     return;
   }
 
@@ -94,6 +95,7 @@ export async function saveBoardMeta(title, comments, emailCounts, oooStatus) {
     comments,
     email_counts: emailCounts,
     ooo_status: oooStatus,
+    workload_color: workloadColor,
     updated_at: new Date().toISOString(),
   });
 
@@ -128,6 +130,7 @@ export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
           comments: meta.comments,
           emailCounts: meta.email_counts,
           oooStatus: meta.ooo_status,
+          workloadColor: meta.workload_color,
         });
       }
     )
