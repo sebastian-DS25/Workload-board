@@ -1,4 +1,4 @@
-import { STORAGE_KEY, PEOPLE } from "./constants.js";  
+import { STORAGE_KEY, PEOPLE } from "./constants.js";
 import {
   initAssignments,
   initComments,
@@ -26,7 +26,7 @@ function rowsToAssignments(rows) {
 }
 
 function todayString() {
-  return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  return new Date().toISOString().slice(0, 10);
 }
 
 function getNextCoordinator(current) {
@@ -56,7 +56,7 @@ export async function loadBoard() {
     supabase.from("assignments").select("person, category, active"),
     supabase
       .from("board_meta")
-      .select("title, comments, workload_color, coordinator, coordinator_date")  
+      .select("title, comments, workload_color, coordinator, coordinator_date")
       .eq("id", META_ID)
       .maybeSingle(),
   ]);
@@ -69,12 +69,9 @@ export async function loadBoard() {
   let coordinator = metaRes.data?.coordinator ?? PEOPLE[0];
   let coordinatorDate = storedDate;
 
-  
   if (storedDate && storedDate < today) {
     coordinator = getNextCoordinator(coordinator);
     coordinatorDate = today;
-
-    
     await supabase.from("board_meta").upsert({
       id: META_ID,
       coordinator,
@@ -83,7 +80,6 @@ export async function loadBoard() {
     });
   }
 
-  
   if (!storedDate) {
     coordinatorDate = today;
     await supabase.from("board_meta").upsert({
@@ -140,7 +136,7 @@ export async function saveBoardMeta(title, comments, workloadColor, coordinator)
     comments,
     workload_color: workloadColor,
     coordinator,
-    coordinator_date: today,       
+    coordinator_date: today,
     updated_at: new Date().toISOString(),
   });
 
@@ -167,7 +163,6 @@ export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
       (payload) => {
         const row = payload.new ?? payload.old;
         if (!row?.person || !row?.category) return;
-
         onAssignmentChange({
           person: row.person,
           category: row.category,
@@ -184,8 +179,8 @@ export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
           title: meta.title,
           comments: meta.comments,
           workloadColor: meta.workload_color,
-          coordinator: meta.coordinator,              
-          coordinatorDate: meta.coordinator_date,     
+          coordinator: meta.coordinator,
+          coordinatorDate: meta.coordinator_date,
         });
       }
     )

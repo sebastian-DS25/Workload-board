@@ -22,6 +22,9 @@ export default function App() {
   const [teamTitle, setTeamTitle] = useState("Inside Sales · Aalborg");
   const [hoveredCell, setHoveredCell] = useState(null);
   const [toast, setToast] = useState(null);
+  const [workloadColor, setWorkloadColor] = useState("#ef4444");
+  const [coordinator, setCoordinator] = useState(PEOPLE[0]);
+  const [oooPeople, setOooPeople] = useState({});
   const savingRef = useRef(false);
 
   const applyState = useCallback((state) => {
@@ -49,7 +52,7 @@ export default function App() {
               [person]: { ...prev[person], [category]: active },
             }));
           },
-          onMetaChange: ({ title, comments, workloadColor, coordinator, coordinatorDate }) => {
+          onMetaChange: ({ title, comments, workloadColor, coordinator }) => {
             if (savingRef.current) return;
             setTeamTitle(title);
             setComments({ ...initComments(), ...(comments || {}) });
@@ -75,12 +78,12 @@ export default function App() {
     setTimeout(() => setToast(null), 2200);
   }
 
-  async function saveMeta(titleData, commentsData, toastMsg = "Saved ✓") {
+  async function saveMeta(titleData, commentsData, workloadColorData = workloadColor, coordinatorData = coordinator, toastMsg = "Saved ✓") {
     if (!canEdit) return;
     savingRef.current = true;
     setSaving(true);
     try {
-      await saveBoardMeta(titleData, commentsData);
+      await saveBoardMeta(titleData, commentsData, workloadColorData, coordinatorData);
       showToast(toastMsg);
     } catch (err) {
       console.error(err);
@@ -123,6 +126,30 @@ export default function App() {
   function saveComment() {
     if (!canEdit) return;
     saveMeta(teamTitle, comments);
+  }
+
+  function cycleWorkload() {
+    setWorkloadColor(prev => {
+      const next = prev === "#22c55e" ? "#f59e0b" : prev === "#f59e0b" ? "#ef4444" : "#22c55e";
+      saveMeta(teamTitle, comments, next, coordinator);
+      return next;
+    });
+  }
+
+  function rotateCoordinator() {
+    if (!canEdit) return;
+    setCoordinator(prev => {
+      const currentIndex = PEOPLE.indexOf(prev);
+      const nextIndex = (currentIndex + 1) % PEOPLE.length;
+      const next = PEOPLE[nextIndex];
+      saveMeta(teamTitle, comments, workloadColor, next);
+      return next;
+    });
+  }
+
+  function toggleOoo(person) {
+    if (!canEdit) return;
+    setOooPeople(prev => ({ ...prev, [person]: !prev[person] }));
   }
 
   async function copyLink(kind) {
@@ -207,6 +234,42 @@ export default function App() {
             <p style={{ color: "#fca5a5", fontSize: 12, margin: "0 0 12px 0" }}>{loadError}</p>
           )}
 
+          {/* Workload color badge */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <div
+              onClick={cycleWorkload}
+              title="Click to change workload status"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 10,
+                background: workloadColor, borderRadius: 8,
+                padding: "6px 16px", cursor: "pointer",
+                fontWeight: 700, fontSize: 14, color: "#fff",
+                boxShadow: `0 0 12px ${workloadColor}80`,
+                userSelect: "none",
+              }}
+            >
+              Workload
+            </div>
+
+            {/* Coordinator rotate button */}
+            {canEdit && (
+              <div
+                onClick={rotateCoordinator}
+                title="Pass coordinator to next person"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  background: "#1e293b", borderRadius: 8,
+                  border: "1px solid #3b82f6",
+                  padding: "6px 16px", cursor: "pointer",
+                  fontWeight: 700, fontSize: 14, color: "#60a5fa",
+                  userSelect: "none",
+                }}
+              >
+                ⭐ Pass Coordinator → {PEOPLE[(PEOPLE.indexOf(coordinator) + 1) % PEOPLE.length]}
+              </div>
+            )}
+          </div>
+
           {editingTitle && canEdit ? (
             <input
               autoFocus
@@ -235,14 +298,9 @@ export default function App() {
             <button
               onClick={() => copyLink("view")}
               style={{
-                background: "#334155",
-                color: "#e2e8f0",
-                border: "1px solid #475569",
-                borderRadius: 8,
-                padding: "8px 16px",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
+                background: "#334155", color: "#e2e8f0",
+                border: "1px solid #475569", borderRadius: 8,
+                padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer",
               }}
             >
               Copy view link
@@ -251,14 +309,9 @@ export default function App() {
               <button
                 onClick={() => copyLink("edit")}
                 style={{
-                  background: "#3b82f6",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 8,
-                  padding: "8px 16px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
+                  background: "#3b82f6", color: "#fff",
+                  border: "none", borderRadius: 8,
+                  padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer",
                   boxShadow: "0 4px 16px rgba(59,130,246,0.35)",
                 }}
               >
@@ -293,10 +346,8 @@ export default function App() {
         </div>
 
         <div style={{
-          background: "#1e293b",
-          borderRadius: 16,
-          border: "1px solid #334155",
-          overflow: "hidden",
+          background: "#1e293b", borderRadius: 16,
+          border: "1px solid #334155", overflow: "hidden",
           boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
           opacity: canEdit ? 1 : 0.92,
         }}>
@@ -352,7 +403,12 @@ export default function App() {
                   return (
                     <tr
                       key={person}
-                      style={{ background: pi % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)" }}
+                      style={{
+                        background: oooPeople[person]
+                          ? "rgba(239,68,68,0.06)"
+                          : pi % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                        opacity: oooPeople[person] ? 0.5 : 1,
+                      }}
                     >
                       <td style={{ padding: "14px 20px", borderBottom: "1px solid #1e293b", verticalAlign: "middle" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -363,7 +419,43 @@ export default function App() {
                             display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: 12, fontWeight: 700, color: "#fff", flexShrink: 0,
                           }}>{person[0]}</div>
-                          <span style={{ color: "#e2e8f0", fontWeight: 500, fontSize: 14 }}>{person}</span>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{
+                                color: "#e2e8f0", fontWeight: 500, fontSize: 14,
+                                textDecoration: oooPeople[person] ? "line-through" : "none",
+                                opacity: oooPeople[person] ? 0.5 : 1,
+                              }}>{person}</span>
+                              {coordinator === person && (
+                                <span style={{
+                                  background: "#3b82f620", color: "#60a5fa",
+                                  border: "1px solid #3b82f640",
+                                  borderRadius: 6, fontSize: 10, fontWeight: 700,
+                                  padding: "2px 6px",
+                                }}>⭐ Coordinator</span>
+                              )}
+                              {oooPeople[person] && (
+                                <span style={{
+                                  background: "#ef444420", color: "#ef4444",
+                                  border: "1px solid #ef444440",
+                                  borderRadius: 6, fontSize: 10, fontWeight: 700,
+                                  padding: "2px 6px",
+                                }}>OOO</span>
+                              )}
+                            </div>
+                            {canEdit && (
+                              <span
+                                onClick={() => toggleOoo(person)}
+                                style={{
+                                  fontSize: 10, fontWeight: 700, cursor: "pointer",
+                                  color: oooPeople[person] ? "#ef4444" : "#475569",
+                                  userSelect: "none",
+                                }}
+                              >
+                                {oooPeople[person] ? "🏖️ Out of office" : "Set OOO"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       {CATEGORIES.map(cat => {
@@ -381,7 +473,7 @@ export default function App() {
                               title={canEdit ? `${active ? "Remove" : "Assign"} ${person} → ${cat}` : "View only"}
                               style={{
                                 width: 36, height: 36, borderRadius: 8,
-                                border: active ? `2px solid ${col.accent}` : "1.5px solid #334155",
+                                border: active ? `2px solid ${col.accent}` : "1.5px solid #94a3b8",
                                 background: active ? col.bg : (hovered && canEdit ? "#1e293b" : "transparent"),
                                 cursor: canEdit ? "pointer" : "default",
                                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -397,8 +489,10 @@ export default function App() {
                                 </svg>
                               ) : (
                                 <div style={{
-                                  width: 6, height: 6, borderRadius: "50%",
-                                  background: hovered && canEdit ? "#475569" : "#334155",
+                                  width: 10, height: 10, borderRadius: "50%",
+                                  background: "transparent",
+                                  border: "2px solid #94a3b8",
+                                  boxShadow: hovered && canEdit ? "0 0 6px #94a3b8" : "none",
                                 }} />
                               )}
                             </button>
