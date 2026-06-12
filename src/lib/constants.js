@@ -1,5 +1,5 @@
 export const PEOPLE = ["Charlotte", "Christian", "Claus", "Jesper E", "JiHye", "Lasse", "Marianne", "Marta", "Sonja"];
-export const CATEGORIES = ["Adriatic", "Asia", "Americas", "Europe", "MiddleEast", "Nordic", "Shipserv", "Ticket", "Kits", "Own"];
+export const CATEGORIES = ["Adriatic", "Americas", "Europe", "MiddleEast", "Nordic", "Shipserv", "Ticket", "Kits", "Own"];
 
 export const CATEGORY_COLORS = {
   Adriatic:   { bg: "#dbeafe", accent: "#3b82f6", text: "#1e40af" },
