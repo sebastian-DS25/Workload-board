@@ -395,12 +395,12 @@ export default function App() {
                     const count = getColumnCount(cat);
                     return (
                       <th key={cat} style={{
-                        padding: "8px 4px", textAlign: "center",
+                        padding: "14px 6px", textAlign: "center",
                         borderBottom: `1px solid ${t.border}`,
                       }}>
                         <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                           <span style={{
-                            fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
+                            fontSize: 20, fontWeight: 700, letterSpacing: 0.5,
                             textTransform: "uppercase", color: col.accent,
                           }}>{cat}</span>
                           <input
@@ -420,16 +420,16 @@ export default function App() {
                               border: `1px solid ${t.border}`,
                               borderRadius: 6,
                               color: (emailCounts[cat] ?? 0) > 0 ? t.inputColor : t.textFaint,
-                              fontSize: 11, padding: "2px 4px",
+                              fontSize: 18, padding: "2px 4px",
                               outline: "none",
                               cursor: canEdit ? "text" : "default",
                             }}
                           />
                           <span style={{
-                            width: 20, height: 20, borderRadius: "50%",
+                            width: 32, height: 32, borderRadius: "50%",
                             background: count > 0 ? col.accent : t.badgeBg,
                             color: count > 0 ? "#fff" : t.textFaint,
-                            fontSize: 10, fontWeight: 700,
+                            fontSize: 16, fontWeight: 700,
                             display: "flex", alignItems: "center", justifyContent: "center",
                             border: `1px solid ${count > 0 ? col.accent : t.border}`,
                           }}>{count}</span>
