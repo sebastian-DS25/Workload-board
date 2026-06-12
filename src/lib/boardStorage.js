@@ -8,6 +8,7 @@ import {
   applyParsedState,
 } from "./boardState.js";
 import { supabase, cloudEnabled } from "./supabase.js";
+import { PEOPLE } from "./constants.js";
 
 export { cloudEnabled };
 
@@ -25,6 +26,19 @@ function rowsToAssignments(rows) {
     }
   }
   return assignments;
+}
+
+function todayString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getNextCoordinator(current, oooStatus) {
+  const index = PEOPLE.indexOf(current);
+  for (let i = 1; i <= PEOPLE.length; i++) {
+    const next = PEOPLE[(index + i) % PEOPLE.length];
+    if (!oooStatus?.[next]) return next;
+  }
+  return current;
 }
 
 function loadLocal() {
@@ -46,7 +60,7 @@ export async function loadBoard() {
     supabase.from("assignments").select("person, category, active"),
     supabase
       .from("board_meta")
-      .select("title, comments, email_counts, ooo_status, workload_color")
+      .select("title, comments, email_counts, ooo_status, workload_color, coordinator, coordinator_date")
       .eq("id", META_ID)
       .maybeSingle(),
   ]);
@@ -54,13 +68,31 @@ export async function loadBoard() {
   if (assignmentsRes.error) throw assignmentsRes.error;
   if (metaRes.error) throw metaRes.error;
 
+  const today = todayString();
+  const oooStatus = metaRes.data?.ooo_status || {};
+  let coordinator = metaRes.data?.coordinator ?? PEOPLE[0];
+  let coordinatorDate = metaRes.data?.coordinator_date ?? "";
+
+  // Auto-rotate if date has changed
+  if (coordinatorDate !== today) {
+    coordinator = getNextCoordinator(coordinator, oooStatus);
+    coordinatorDate = today;
+    await supabase.from("board_meta").upsert({
+      id: META_ID,
+      coordinator,
+      coordinator_date: coordinatorDate,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
   return {
     assignments: rowsToAssignments(assignmentsRes.data),
     title: metaRes.data?.title ?? defaultBoardPayload().title,
     comments: { ...initComments(), ...(metaRes.data?.comments || {}) },
     emailCounts: { ...initEmailCounts(), ...(metaRes.data?.email_counts || {}) },
-    oooStatus: { ...initOooStatus(), ...(metaRes.data?.ooo_status || {}) },
+    oooStatus,
     workloadColor: metaRes.data?.workload_color ?? "#ef4444",
+    coordinator,
   };
 }
 
@@ -82,10 +114,10 @@ export async function upsertAssignment(person, category, active) {
   if (error) throw error;
 }
 
-export async function saveBoardMeta(title, comments, emailCounts, oooStatus, workloadColor) {
+export async function saveBoardMeta(title, comments, emailCounts, oooStatus, workloadColor, coordinator) {
   if (!supabase) {
     const state = loadLocal();
-    saveLocal({ ...state, title, comments, emailCounts, oooStatus, workloadColor });
+    saveLocal({ ...state, title, comments, emailCounts, oooStatus, workloadColor, coordinator });
     return;
   }
 
@@ -96,6 +128,7 @@ export async function saveBoardMeta(title, comments, emailCounts, oooStatus, wor
     email_counts: emailCounts,
     ooo_status: oooStatus,
     workload_color: workloadColor,
+    coordinator,
     updated_at: new Date().toISOString(),
   });
 
@@ -126,11 +159,11 @@ export function subscribeBoard({ onAssignmentChange, onMetaChange }) {
       (payload) => {
         const meta = payload.new;
         if (meta) onMetaChange({
-          title: meta.title,
           comments: meta.comments,
           emailCounts: meta.email_counts,
           oooStatus: meta.ooo_status,
           workloadColor: meta.workload_color,
+          coordinator: meta.coordinator,
         });
       }
     )
