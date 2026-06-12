@@ -22,17 +22,12 @@ export default function App() {
   const [workloadColor, setWorkloadColor] = useState("#ef4444");
   const savingRef = useRef(false);
 
-  function cycleWorkload() {
-    setWorkloadColor(prev =>
-      prev === "#22c55e" ? "#f59e0b" : prev === "#f59e0b" ? "#ef4444" : "#22c55e"
-    );
-  }
-
   const applyState = useCallback((state) => {
     setAssignments(state.assignments);
     setComments(state.comments);
     setEmailCounts(state.emailCounts || {});
     setOooStatus(state.oooStatus || {});
+    if (state.workloadColor) setWorkloadColor(state.workloadColor);
   }, []);
 
   useEffect(() => {
@@ -50,11 +45,12 @@ export default function App() {
               [person]: { ...prev[person], [category]: active },
             }));
           },
-          onMetaChange: ({ title, comments: c, emailCounts: ec, oooStatus: oos }) => {
+          onMetaChange: ({ comments: c, emailCounts: ec, oooStatus: oos, workloadColor: wc }) => {
             if (savingRef.current) return;
             setComments({ ...initComments(), ...(c || {}) });
             setEmailCounts({ ...initEmailCounts(), ...(ec || {}) });
             setOooStatus({ ...initOooStatus(), ...(oos || {}) });
+            if (wc) setWorkloadColor(wc);
           },
         });
       } catch (err) {
@@ -78,7 +74,7 @@ export default function App() {
     if (!canEdit) return;
     savingRef.current = true;
     try {
-      await saveBoardMeta("Inside Sales · Aalborg", commentsData, emailCounts, oooStatus);
+      await saveBoardMeta("Inside Sales · Aalborg", commentsData, emailCounts, oooStatus, workloadColor);
       showToast(toastMsg);
     } catch (err) {
       console.error(err);
@@ -129,7 +125,7 @@ export default function App() {
   async function saveEmailCounts(newCounts) {
     if (!canEdit) return;
     try {
-      await saveBoardMeta("Inside Sales · Aalborg", comments, newCounts, oooStatus);
+      await saveBoardMeta("Inside Sales · Aalborg", comments, newCounts, oooStatus, workloadColor);
     } catch (err) {
       showToast("Save failed — try again");
     }
@@ -140,9 +136,19 @@ export default function App() {
     const newOoo = { ...oooStatus, [person]: !oooStatus[person] };
     setOooStatus(newOoo);
     try {
-      await saveBoardMeta("Inside Sales · Aalborg", comments, emailCounts, newOoo);
+      await saveBoardMeta("Inside Sales · Aalborg", comments, emailCounts, newOoo, workloadColor);
     } catch (err) {
       setOooStatus(oooStatus);
+      showToast("Save failed — try again");
+    }
+  }
+
+  async function cycleWorkload() {
+    const next = workloadColor === "#22c55e" ? "#f59e0b" : workloadColor === "#f59e0b" ? "#ef4444" : "#22c55e";
+    setWorkloadColor(next);
+    try {
+      await saveBoardMeta("Inside Sales · Aalborg", comments, emailCounts, oooStatus, next);
+    } catch (err) {
       showToast("Save failed — try again");
     }
   }
@@ -167,7 +173,7 @@ export default function App() {
         await upsertAssignment(person, cat, false);
       }
     }
-    await saveBoardMeta("Inside Sales · Aalborg", comments, freshCounts, oooStatus);
+    await saveBoardMeta("Inside Sales · Aalborg", comments, freshCounts, oooStatus, workloadColor);
     showToast("Board reset ✓");
   }
 
