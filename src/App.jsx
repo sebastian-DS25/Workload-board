@@ -28,6 +28,8 @@ export default function App() {
     setAssignments(state.assignments);
     setComments(state.comments);
     setTeamTitle(state.title);
+    if (state.workloadColor) setWorkloadColor(state.workloadColor);
+    if (state.coordinator) setCoordinator(state.coordinator);
   }, []);
 
   useEffect(() => {
@@ -47,10 +49,12 @@ export default function App() {
               [person]: { ...prev[person], [category]: active },
             }));
           },
-          onMetaChange: ({ title, comments }) => {
+          onMetaChange: ({ title, comments, workloadColor, coordinator, coordinatorDate }) => {
             if (savingRef.current) return;
             setTeamTitle(title);
             setComments({ ...initComments(), ...(comments || {}) });
+            if (workloadColor) setWorkloadColor(workloadColor);
+            if (coordinator) setCoordinator(coordinator);
           },
         });
       } catch (err) {
