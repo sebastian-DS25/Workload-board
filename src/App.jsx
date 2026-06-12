@@ -506,13 +506,17 @@ export default function App() {
                           disabled={!canEdit}
                           title={isOoo ? "Mark as available" : "Mark as out of office"}
                           style={{
-                            background: "none", border: "none",
+                            background: isOoo ? "#ef444420" : "none",
+                            border: isOoo ? "2px solid #ef4444" : `2px solid ${t.border}`,
+                            borderRadius: 8,
                             cursor: canEdit ? "pointer" : "default",
-                            fontSize: 18, padding: "4px",
-                            opacity: isOoo ? 1 : 0.2,
-                            filter: isOoo ? "none" : "grayscale(100%)",
-                            transition: "opacity 0.15s, filter 0.15s",
-                          }}
+                            fontSize: 18, padding: "6px 8px",
+                            opacity: canEdit ? 1 : 0.7,
+                            transition: "all 0.2s",
+                            boxShadow: isOoo ? "0 0 12px #ef444460" : "none",
+                            transform: isOoo ? "scale(1.2)" : "scale(1)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
                         >✈️</button>
                       </td>
                     </tr>
