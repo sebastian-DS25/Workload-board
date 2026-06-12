@@ -15,6 +15,7 @@ export default function App() {
   const [comments, setComments] = useState(null);
   const [emailCounts, setEmailCounts] = useState({});
   const [oooStatus, setOooStatus] = useState({});
+  const [coordinator, setCoordinator] = useState(PEOPLE[0]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [hoveredCell, setHoveredCell] = useState(null);
@@ -87,6 +88,7 @@ export default function App() {
     setEmailCounts(state.emailCounts || {});
     setOooStatus(state.oooStatus || {});
     if (state.workloadColor) setWorkloadColor(state.workloadColor);
+    if (state.coordinator) setCoordinator(state.coordinator);
   }, []);
 
   useEffect(() => {
@@ -104,12 +106,13 @@ export default function App() {
               [person]: { ...prev[person], [category]: active },
             }));
           },
-          onMetaChange: ({ comments: c, emailCounts: ec, oooStatus: oos, workloadColor: wc }) => {
+          onMetaChange: ({ comments: c, emailCounts: ec, oooStatus: oos, workloadColor: wc, coordinator: co }) => {
             if (savingRef.current) return;
             setComments({ ...initComments(), ...(c || {}) });
             setEmailCounts({ ...initEmailCounts(), ...(ec || {}) });
             setOooStatus({ ...initOooStatus(), ...(oos || {}) });
             if (wc) setWorkloadColor(wc);
+            if (co) setCoordinator(co);
           },
         });
       } catch (err) {
@@ -133,7 +136,7 @@ export default function App() {
     if (!canEdit) return;
     savingRef.current = true;
     try {
-      await saveBoardMeta("Inside Sales · Aalborg", commentsData, emailCounts, oooStatus, workloadColor);
+      await saveBoardMeta("Inside Sales · Aalborg", commentsData, emailCounts, oooStatus, workloadColor, coordinator);
       showToast(toastMsg);
     } catch (err) {
       console.error(err);
@@ -184,7 +187,7 @@ export default function App() {
   async function saveEmailCounts(newCounts) {
     if (!canEdit) return;
     try {
-      await saveBoardMeta("Inside Sales · Aalborg", comments, newCounts, oooStatus, workloadColor);
+      await saveBoardMeta("Inside Sales · Aalborg", comments, newCounts, oooStatus, workloadColor, coordinator);
     } catch (err) {
       showToast("Save failed — try again");
     }
@@ -195,7 +198,7 @@ export default function App() {
     const newOoo = { ...oooStatus, [person]: !oooStatus[person] };
     setOooStatus(newOoo);
     try {
-      await saveBoardMeta("Inside Sales · Aalborg", comments, emailCounts, newOoo, workloadColor);
+      await saveBoardMeta("Inside Sales · Aalborg", comments, emailCounts, newOoo, workloadColor, coordinator);
     } catch (err) {
       setOooStatus(oooStatus);
       showToast("Save failed — try again");
@@ -206,10 +209,29 @@ export default function App() {
     const next = workloadColor === "#22c55e" ? "#f59e0b" : workloadColor === "#f59e0b" ? "#ef4444" : "#22c55e";
     setWorkloadColor(next);
     try {
-      await saveBoardMeta("Inside Sales · Aalborg", comments, emailCounts, oooStatus, next);
+      await saveBoardMeta("Inside Sales · Aalborg", comments, emailCounts, oooStatus, next, coordinator);
     } catch (err) {
       showToast("Save failed — try again");
     }
+  }
+
+  async function passCoordinator() {
+    if (!canEdit) return;
+    const index = PEOPLE.indexOf(coordinator);
+    for (let i = 1; i <= PEOPLE.length; i++) {
+      const next = PEOPLE[(index + i) % PEOPLE.length];
+      if (!oooStatus[next]) {
+        setCoordinator(next);
+        try {
+          await saveBoardMeta("Inside Sales · Aalborg", comments, emailCounts, oooStatus, workloadColor, next);
+          showToast(`⭐ Coordinator passed to ${next}`);
+        } catch (err) {
+          showToast("Save failed — try again");
+        }
+        return;
+      }
+    }
+    showToast("Everyone is OOO!");
   }
 
   async function resetBoard() {
@@ -230,7 +252,7 @@ export default function App() {
         await upsertAssignment(person, cat, false);
       }
     }
-    await saveBoardMeta("Inside Sales · Aalborg", comments, freshCounts, oooStatus, workloadColor);
+    await saveBoardMeta("Inside Sales · Aalborg", comments, freshCounts, oooStatus, workloadColor, coordinator);
     showToast("Board reset ✓");
   }
 
@@ -308,6 +330,21 @@ export default function App() {
             >
               Workload
             </div>
+            {canEdit && (
+              <div
+                onClick={passCoordinator}
+                title="Pass coordinator to next available person"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  background: t.badgeBg, border: `1px solid #3b82f6`,
+                  borderRadius: 8, padding: "6px 16px", cursor: "pointer",
+                  fontWeight: 700, fontSize: 14, color: "#60a5fa",
+                  userSelect: "none",
+                }}
+              >
+                ⭐ Pass Coord
+              </div>
+            )}
             <div
               onClick={resetBoard}
               title="Reset all assignments and email counts"
@@ -415,11 +452,15 @@ export default function App() {
               <tbody>
                 {PEOPLE.map((person, pi) => {
                   const isOoo = oooStatus[person] ?? false;
+                  const isCoord = coordinator === person;
                   return (
                     <tr
                       key={person}
                       style={{
-                        background: isOoo ? t.oooBg : pi % 2 === 0 ? "transparent" : t.rowAlt,
+                        background: isCoord
+                          ? darkMode ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.05)"
+                          : isOoo ? t.oooBg
+                          : pi % 2 === 0 ? "transparent" : t.rowAlt,
                         opacity: isOoo ? 0.6 : 1,
                       }}
                     >
@@ -428,11 +469,24 @@ export default function App() {
                           <div style={{
                             width: 30, height: 30, borderRadius: "50%",
                             background: `hsl(${(pi * 43) % 360}, 60%, ${darkMode ? "35%" : "45%"})`,
-                            border: `2px solid hsl(${(pi * 43) % 360}, 60%, ${darkMode ? "50%" : "60%"})`,
+                            border: isCoord
+                              ? "2px solid #3b82f6"
+                              : `2px solid hsl(${(pi * 43) % 360}, 60%, ${darkMode ? "50%" : "60%"})`,
                             display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0,
+                            boxShadow: isCoord ? "0 0 8px #3b82f680" : "none",
                           }}>{person[0]}</div>
                           <span style={{ color: t.text, fontWeight: 600, fontSize: 15 }}>{person}</span>
+                          {isCoord && (
+                            <span style={{
+                              fontSize: 10, fontWeight: 700,
+                              color: "#60a5fa",
+                              background: darkMode ? "#3b82f620" : "#dbeafe",
+                              border: "1px solid #3b82f640",
+                              padding: "2px 7px", borderRadius: 6,
+                              whiteSpace: "nowrap",
+                            }}>⭐ Coord</span>
+                          )}
                           {isOoo && (
                             <span style={{
                               fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
@@ -516,7 +570,7 @@ export default function App() {
                             boxShadow: isOoo ? "0 0 12px #ef444460" : "none",
                             transform: isOoo ? "scale(1.2)" : "scale(1)",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                        }}
+                          }}
                         >✈️</button>
                       </td>
                     </tr>
