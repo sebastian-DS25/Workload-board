@@ -3,7 +3,6 @@ export const CATEGORIES = ["Adriatic", "Asia", "Americas", "Europe", "MiddleEast
 
 export const CATEGORY_COLORS = {
   Adriatic:   { bg: "#dbeafe", accent: "#3b82f6", text: "#1e40af" },
-  Asia:       { bg: "#fce7f3", accent: "#ec4899", text: "#9d174d" },
   Americas:   { bg: "#d1fae5", accent: "#10b981", text: "#065f46" },
   Europe:     { bg: "#ede9fe", accent: "#8b5cf6", text: "#4c1d95" },
   MiddleEast: { bg: "#fef3c7", accent: "#f59e0b", text: "#92400e" },
