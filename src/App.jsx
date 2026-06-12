@@ -20,7 +20,66 @@ export default function App() {
   const [hoveredCell, setHoveredCell] = useState(null);
   const [toast, setToast] = useState(null);
   const [workloadColor, setWorkloadColor] = useState("#ef4444");
+  const [darkMode, setDarkMode] = useState(true);
   const savingRef = useRef(false);
+
+  const t = darkMode ? {
+    pageBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
+    tableBg: "#1e293b",
+    tableHeader: "#0f172a",
+    border: "#334155",
+    borderLight: "#1e293b",
+    text: "#e2e8f0",
+    textMuted: "#64748b",
+    textFaint: "#475569",
+    textDim: "#334155",
+    inputBg: "transparent",
+    inputColor: "#94a3b8",
+    cellHover: "#1e293b",
+    dotInactive: "#334155",
+    dotHover: "#475569",
+    commentBg: "#0f172a",
+    toastBg: "#22c55e",
+    badgeBg: "#1e293b",
+    badgeText: "#94a3b8",
+    oooBg: "rgba(100,116,139,0.12)",
+    rowAlt: "rgba(255,255,255,0.015)",
+    rowHover: "rgba(255,255,255,0.03)",
+    footerText: "#475569",
+    warningBg: "#fef3c720",
+    warningBorder: "#f59e0b40",
+    warningText: "#fbbf24",
+    toggleBg: "#334155",
+    toggleText: "#94a3b8",
+  } : {
+    pageBg: "linear-gradient(135deg, #f1f5f9 0%, #ffffff 50%, #f1f5f9 100%)",
+    tableBg: "#ffffff",
+    tableHeader: "#f8fafc",
+    border: "#cbd5e1",
+    borderLight: "#e2e8f0",
+    text: "#0f172a",
+    textMuted: "#334155",
+    textFaint: "#64748b",
+    textDim: "#cbd5e1",
+    inputBg: "#f8fafc",
+    inputColor: "#0f172a",
+    cellHover: "#f1f5f9",
+    dotInactive: "#cbd5e1",
+    dotHover: "#94a3b8",
+    commentBg: "#f8fafc",
+    toastBg: "#22c55e",
+    badgeBg: "#f1f5f9",
+    badgeText: "#334155",
+    oooBg: "rgba(100,116,139,0.08)",
+    rowAlt: "rgba(0,0,0,0.015)",
+    rowHover: "rgba(0,0,0,0.03)",
+    footerText: "#64748b",
+    warningBg: "#fef9c3",
+    warningBorder: "#fde047",
+    warningText: "#854d0e",
+    toggleBg: "#e2e8f0",
+    toggleText: "#334155",
+  };
 
   const applyState = useCallback((state) => {
     setAssignments(state.assignments);
@@ -164,9 +223,7 @@ export default function App() {
     }
     setAssignments(fresh);
     const freshCounts = {};
-    for (const cat of CATEGORIES) {
-      freshCounts[cat] = 0;
-    }
+    for (const cat of CATEGORIES) freshCounts[cat] = 0;
     setEmailCounts(freshCounts);
     for (const person of PEOPLE) {
       for (const cat of CATEGORIES) {
@@ -187,7 +244,7 @@ export default function App() {
 
   if (!loaded) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f172a" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: darkMode ? "#0f172a" : "#f1f5f9" }}>
         <div style={{ color: "#94a3b8", fontFamily: "monospace", fontSize: 14, letterSpacing: 3 }}>LOADING…</div>
       </div>
     );
@@ -198,7 +255,7 @@ export default function App() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
+      background: t.pageBg,
       fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
       padding: "16px",
       position: "relative",
@@ -207,14 +264,14 @@ export default function App() {
     }}>
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-        backgroundImage: "linear-gradient(rgba(148,163,184,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.03) 1px, transparent 1px)",
+        backgroundImage: `linear-gradient(${darkMode ? "rgba(148,163,184,0.03)" : "rgba(0,0,0,0.03)"} 1px, transparent 1px), linear-gradient(90deg, ${darkMode ? "rgba(148,163,184,0.03)" : "rgba(0,0,0,0.03)"} 1px, transparent 1px)`,
         backgroundSize: "40px 40px",
       }} />
 
       {toast && (
         <div style={{
           position: "fixed", bottom: 28, right: 28, zIndex: 100,
-          background: "#22c55e", color: "#fff", fontWeight: 600,
+          background: t.toastBg, color: "#fff", fontWeight: 600,
           padding: "10px 20px", borderRadius: 10, fontSize: 13,
           boxShadow: "0 8px 32px rgba(34,197,94,0.3)",
         }}>{toast}</div>
@@ -229,11 +286,11 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{
               display: "inline-flex", alignItems: "center", gap: 6,
-              background: "#1e293b", border: "1px solid #334155",
+              background: t.badgeBg, border: `1px solid ${t.border}`,
               borderRadius: 20, padding: "5px 14px",
             }}>
               <span style={{ fontSize: 15 }}>📧</span>
-              <span style={{ color: totalEmails > 0 ? "#94a3b8" : "#475569", fontSize: 13, fontWeight: 600 }}>
+              <span style={{ color: totalEmails > 0 ? t.inputColor : t.textFaint, fontSize: 13, fontWeight: 600 }}>
                 {totalEmails} emails
               </span>
             </div>
@@ -256,32 +313,45 @@ export default function App() {
               title="Reset all assignments and email counts"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
-                background: "#1e293b", border: "1px solid #334155",
+                background: t.badgeBg, border: `1px solid ${t.border}`,
                 borderRadius: 8, padding: "6px 16px", cursor: "pointer",
-                fontWeight: 700, fontSize: 14, color: "#94a3b8",
+                fontWeight: 700, fontSize: 14, color: t.badgeText,
                 userSelect: "none",
               }}
             >
               🔄 Reset
             </div>
+            <div
+              onClick={() => setDarkMode(prev => !prev)}
+              title="Toggle light/dark mode"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: t.toggleBg, border: `1px solid ${t.border}`,
+                borderRadius: 8, padding: "6px 16px", cursor: "pointer",
+                fontWeight: 700, fontSize: 14, color: t.toggleText,
+                userSelect: "none",
+              }}
+            >
+              {darkMode ? "☀️ Light" : "🌙 Dark"}
+            </div>
           </div>
         </div>
 
         <div style={{
-          background: "#1e293b",
+          background: t.tableBg,
           borderRadius: 16,
-          border: "1px solid #334155",
+          border: `1px solid ${t.border}`,
           overflow: "hidden",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+          boxShadow: darkMode ? "0 24px 80px rgba(0,0,0,0.5)" : "0 4px 32px rgba(0,0,0,0.08)",
         }}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
               <thead>
-                <tr style={{ background: "#0f172a" }}>
+                <tr style={{ background: t.tableHeader }}>
                   <th style={{
-                    padding: "10px 12px", textAlign: "left", color: "#64748b",
+                    padding: "10px 12px", textAlign: "left", color: t.textMuted,
                     fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155", width: 140,
+                    borderBottom: `1px solid ${t.border}`, width: 140,
                   }}>Team Member</th>
                   {CATEGORIES.map(cat => {
                     const col = CATEGORY_COLORS[cat];
@@ -289,7 +359,7 @@ export default function App() {
                     return (
                       <th key={cat} style={{
                         padding: "8px 4px", textAlign: "center",
-                        borderBottom: "1px solid #334155",
+                        borderBottom: `1px solid ${t.border}`,
                       }}>
                         <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                           <span style={{
@@ -309,10 +379,10 @@ export default function App() {
                             title={canEdit ? "Emails in this inbox" : undefined}
                             style={{
                               width: 46, textAlign: "center",
-                              background: "transparent",
-                              border: "1px solid #334155",
+                              background: t.inputBg,
+                              border: `1px solid ${t.border}`,
                               borderRadius: 6,
-                              color: (emailCounts[cat] ?? 0) > 0 ? "#94a3b8" : "#475569",
+                              color: (emailCounts[cat] ?? 0) > 0 ? t.inputColor : t.textFaint,
                               fontSize: 11, padding: "2px 4px",
                               outline: "none",
                               cursor: canEdit ? "text" : "default",
@@ -320,25 +390,25 @@ export default function App() {
                           />
                           <span style={{
                             width: 20, height: 20, borderRadius: "50%",
-                            background: count > 0 ? col.accent : "#1e293b",
-                            color: count > 0 ? "#fff" : "#475569",
+                            background: count > 0 ? col.accent : t.badgeBg,
+                            color: count > 0 ? "#fff" : t.textFaint,
                             fontSize: 10, fontWeight: 700,
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            border: `1px solid ${count > 0 ? col.accent : "#334155"}`,
+                            border: `1px solid ${count > 0 ? col.accent : t.border}`,
                           }}>{count}</span>
                         </div>
                       </th>
                     );
                   })}
                   <th style={{
-                    padding: "10px 8px", textAlign: "left", color: "#64748b",
+                    padding: "10px 8px", textAlign: "left", color: t.textMuted,
                     fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155", width: 160,
+                    borderBottom: `1px solid ${t.border}`, width: 160,
                   }}>Comment</th>
                   <th style={{
-                    padding: "10px 8px", textAlign: "center", color: "#475569",
+                    padding: "10px 8px", textAlign: "center", color: t.textFaint,
                     fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
-                    borderBottom: "1px solid #334155", width: 50,
+                    borderBottom: `1px solid ${t.border}`, width: 50,
                   }}>OOO</th>
                 </tr>
               </thead>
@@ -349,26 +419,24 @@ export default function App() {
                     <tr
                       key={person}
                       style={{
-                        background: isOoo
-                          ? "rgba(100,116,139,0.12)"
-                          : pi % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                        background: isOoo ? t.oooBg : pi % 2 === 0 ? "transparent" : t.rowAlt,
                         opacity: isOoo ? 0.6 : 1,
                       }}
                     >
-                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #1e293b", verticalAlign: "middle" }}>
+                      <td style={{ padding: "10px 12px", borderBottom: `1px solid ${t.borderLight}`, verticalAlign: "middle" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{
                             width: 30, height: 30, borderRadius: "50%",
-                            background: `hsl(${(pi * 43) % 360}, 60%, 35%)`,
-                            border: `2px solid hsl(${(pi * 43) % 360}, 60%, 50%)`,
+                            background: `hsl(${(pi * 43) % 360}, 60%, ${darkMode ? "35%" : "45%"})`,
+                            border: `2px solid hsl(${(pi * 43) % 360}, 60%, ${darkMode ? "50%" : "60%"})`,
                             display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0,
                           }}>{person[0]}</div>
-                          <span style={{ color: "#e2e8f0", fontWeight: 500, fontSize: 15 }}>{person}</span>
+                          <span style={{ color: t.text, fontWeight: 600, fontSize: 15 }}>{person}</span>
                           {isOoo && (
                             <span style={{
                               fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
-                              color: "#94a3b8", background: "#334155",
+                              color: t.textFaint, background: t.border,
                               padding: "2px 5px", borderRadius: 4,
                               textTransform: "uppercase",
                             }}>OOO</span>
@@ -381,7 +449,7 @@ export default function App() {
                         const key = `${person}-${cat}`;
                         const hovered = hoveredCell === key;
                         return (
-                          <td key={cat} style={{ padding: "6px 4px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
+                          <td key={cat} style={{ padding: "6px 4px", textAlign: "center", borderBottom: `1px solid ${t.borderLight}` }}>
                             <button
                               onClick={() => toggle(person, cat)}
                               onMouseEnter={() => setHoveredCell(key)}
@@ -390,8 +458,8 @@ export default function App() {
                               title={canEdit ? `${active ? "Remove" : "Assign"} ${person} → ${cat}` : "View only"}
                               style={{
                                 width: 28, height: 28, borderRadius: 6,
-                                border: active ? `2px solid ${col.accent}` : "1.5px solid #334155",
-                                background: active ? col.bg : (hovered && canEdit ? "#1e293b" : "transparent"),
+                                border: active ? `2px solid ${col.accent}` : `1.5px solid ${t.border}`,
+                                background: active ? col.bg : (hovered && canEdit ? t.cellHover : "transparent"),
                                 cursor: canEdit ? "pointer" : "default",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 margin: "0 auto",
@@ -407,14 +475,14 @@ export default function App() {
                               ) : (
                                 <div style={{
                                   width: 6, height: 6, borderRadius: "50%",
-                                  background: hovered && canEdit ? "#475569" : "#334155",
+                                  background: hovered && canEdit ? t.dotHover : t.dotInactive,
                                 }} />
                               )}
                             </button>
                           </td>
                         );
                       })}
-                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #1e293b", verticalAlign: "middle" }}>
+                      <td style={{ padding: "10px 12px", borderBottom: `1px solid ${t.borderLight}`, verticalAlign: "middle" }}>
                         <textarea
                           value={comments[person] || ""}
                           onChange={e => updateComment(person, e.target.value)}
@@ -424,15 +492,15 @@ export default function App() {
                           rows={2}
                           style={{
                             width: "100%", minWidth: 100, maxWidth: 160, resize: canEdit ? "vertical" : "none",
-                            background: comments[person] ? "#0f172a" : "transparent",
-                            border: `1px solid ${comments[person] ? "#3b82f6" : "#334155"}`,
-                            borderRadius: 8, color: "#e2e8f0", fontSize: 12, fontFamily: "inherit",
+                            background: comments[person] ? t.commentBg : "transparent",
+                            border: `1px solid ${comments[person] ? "#3b82f6" : t.border}`,
+                            borderRadius: 8, color: t.text, fontSize: 12, fontFamily: "inherit",
                             padding: "8px 10px", outline: "none", lineHeight: 1.4,
                             cursor: canEdit ? "text" : "default",
                           }}
                         />
                       </td>
-                      <td style={{ padding: "10px 12px", textAlign: "center", borderBottom: "1px solid #1e293b" }}>
+                      <td style={{ padding: "10px 12px", textAlign: "center", borderBottom: `1px solid ${t.borderLight}` }}>
                         <button
                           onClick={() => toggleOoo(person)}
                           disabled={!canEdit}
@@ -455,13 +523,13 @@ export default function App() {
           </div>
 
           <div style={{
-            padding: "12px 20px", borderTop: "1px solid #334155",
+            padding: "12px 20px", borderTop: `1px solid ${t.border}`,
             display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8,
           }}>
-            <span style={{ color: "#475569", fontSize: 11 }}>
+            <span style={{ color: t.footerText, fontSize: 11 }}>
               Shared board · assign tasks and comments · auto-saves to the cloud
             </span>
-            <span style={{ color: "#334155", fontSize: 11 }}>
+            <span style={{ color: t.textDim, fontSize: 11 }}>
               {PEOPLE.length} members · {CATEGORIES.length} categories
             </span>
           </div>
@@ -473,8 +541,8 @@ export default function App() {
           return (
             <div style={{
               marginTop: 20, padding: "12px 18px", borderRadius: 10,
-              background: "#fef3c720", border: "1px solid #f59e0b40",
-              color: "#fbbf24", fontSize: 12, display: "flex", alignItems: "center", gap: 8,
+              background: t.warningBg, border: `1px solid ${t.warningBorder}`,
+              color: t.warningText, fontSize: 12, display: "flex", alignItems: "center", gap: 8,
             }}>
               <span>⚠️</span>
               <span>No tasks assigned yet to: <strong>{unassigned.join(", ")}</strong></span>
@@ -486,7 +554,7 @@ export default function App() {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         * { box-sizing: border-box; }
-        tbody tr:hover { background: rgba(255,255,255,0.03) !important; }
+        tbody tr:hover { background: ${t.rowHover} !important; }
         button:disabled { opacity: 0.7; }
         input[type=number] { -moz-appearance: textfield; }
         input[type=number]::-webkit-inner-spin-button,
