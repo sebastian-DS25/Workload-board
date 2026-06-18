@@ -124,7 +124,14 @@ export default function App() {
       }
     }
     init();
-    return () => unsubscribe();
+    const interval = setInterval(() => {
+      loadBoard().then(applyState).catch(console.error);
+    }, 5 * 60 * 1000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, [applyState]);
 
   function showToast(msg) {
