@@ -1,4 +1,4 @@
-export const PEOPLE = ["Charlotte", "Christian", "Claus", "Jesper E", "JiHye", "Lasse", "Marianne", "Marta", "Sonja"];
+export const PEOPLE = ["Charlotte", "Christian", "Claus", "Jesper E", "JiHye", "Lasse", "Marianne", "Marta", "Sonja", "Laura"];
 export const CATEGORIES = ["Adriatic", "Americas", "Europe", "MiddleEast", "Nordic", "Shipserv", "Aalborg", "OSP", "Ticket", "Kits", "Own"];
 
 export const CATEGORY_COLORS = {
