@@ -12,12 +12,14 @@ export function getAccessMode() {
 }
 
 export function buildShareUrls() {
-  const base = new URL(import.meta.env.BASE, window.location.origin).href;
+  const base = window.location.origin + window.location.pathname;
   const viewUrl = `${base}?mode=view`;
-  const editUrl = EDIT_KEY ? `${base}?key=${encodeURIComponent(EDIT_KEY)}` : base;
-  return { viewUrl, editUrl, base };
+  const editUrl = EDIT_KEY
+    ? `${base}?key=${EDIT_KEY}`
+    : base;
+  return { viewUrl, editUrl };
 }
 
-export async function copyText(text) {
-  await navigator.clipboard.writeText(text);
+export function copyText(text) {
+  return navigator.clipboard.writeText(text);
 }
