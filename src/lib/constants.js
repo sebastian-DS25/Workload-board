@@ -2,7 +2,7 @@ export const PEOPLE = [
   "Charlotte",
   "Christian",
   "Claus",
-  "Jesper E",
+  "Jesper",
   "JiHye",
   "Lasse",
   "Marianne",
