@@ -124,7 +124,14 @@ export default function App() {
       }
     }
     init();
-    return () => unsubscribe();
+    const interval = setInterval(() => {
+      loadBoard().then(applyState).catch(console.error);
+    }, 5 * 60 * 1000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, [applyState]);
 
   function showToast(msg) {
@@ -394,45 +401,99 @@ export default function App() {
                     const col = CATEGORY_COLORS[cat];
                     const count = getColumnCount(cat);
                     return (
-                      <th key={cat} style={{
-                        padding: "8px 4px", textAlign: "center",
-                        borderBottom: `1px solid ${t.border}`,
-                      }}>
-                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                          <span style={{
-                            fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
-                            textTransform: "uppercase", color: col.accent,
-                          }}>{cat}</span>
+                      <th
+                        key={cat}
+                        style={{
+                          padding: "14px 6px",
+                          textAlign: "center",
+                          borderBottom: `1px solid ${t.border}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "inline-flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 20,
+                              fontWeight: 700,
+                              letterSpacing: 0.5,
+                              textTransform: "uppercase",
+                              color: col.accent,
+                            }}
+                          >
+                            {cat}
+                          </span>
+
                           <input
                             type="number"
                             min="0"
                             value={emailCounts[cat] ?? 0}
                             onChange={e => updateEmailCount(cat, e.target.value)}
                             onBlur={e => {
-                              const newCounts = { ...emailCounts, [cat]: Math.max(0, parseInt(e.target.value) || 0) };
+                              const newCounts = {
+                                ...emailCounts,
+                                [cat]: Math.max(
+                                  0,
+                                  parseInt(e.target.value) || 0,
+                                ),
+                              };
                               saveEmailCounts(newCounts);
                             }}
                             readOnly={!canEdit}
-                            title={canEdit ? "Emails in this inbox" : undefined}
+                            title={
+                              canEdit
+                                ? "Emails in this inbox"
+                                : undefined
+                            }
                             style={{
-                              width: 46, textAlign: "center",
+                              width: 46,
+                              textAlign: "center",
                               background: t.inputBg,
                               border: `1px solid ${t.border}`,
                               borderRadius: 6,
-                              color: (emailCounts[cat] ?? 0) > 0 ? t.inputColor : t.textFaint,
-                              fontSize: 11, padding: "2px 4px",
+                              color:
+                                (emailCounts[cat] ?? 0) > 0
+                                  ? t.inputColor
+                                  : t.textFaint,
+                              fontSize: 18,
+                              padding: "2px 4px",
                               outline: "none",
                               cursor: canEdit ? "text" : "default",
                             }}
                           />
-                          <span style={{
-                            width: 20, height: 20, borderRadius: "50%",
-                            background: count > 0 ? col.accent : t.badgeBg,
-                            color: count > 0 ? "#fff" : t.textFaint,
-                            fontSize: 10, fontWeight: 700,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            border: `1px solid ${count > 0 ? col.accent : t.border}`,
-                          }}>{count}</span>
+
+                          <span
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: "50%",
+                              background:
+                                count > 0
+                                  ? col.accent
+                                  : t.badgeBg,
+                              color:
+                                count > 0
+                                  ? "#fff"
+                                  : t.textFaint,
+                              fontSize: 16,
+                              fontWeight: 700,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              border: `1px solid ${
+                                count > 0
+                                  ? col.accent
+                                  : t.border
+                              }`,
+                            }}
+                          >
+                            {count}
+                          </span>
                         </div>
                       </th>
                     );

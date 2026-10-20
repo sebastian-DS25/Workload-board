@@ -1,4 +1,4 @@
-import { STORAGE_KEY } from "./constants.js";
+import { STORAGE_KEY, PEOPLE, CATEGORIES } from "./constants.js";
 import {
   initAssignments,
   initComments,
@@ -8,7 +8,6 @@ import {
   applyParsedState,
 } from "./boardState.js";
 import { supabase, cloudEnabled } from "./supabase.js";
-import { PEOPLE } from "./constants.js";
 
 export { cloudEnabled };
 
@@ -72,24 +71,47 @@ export async function loadBoard() {
   const oooStatus = metaRes.data?.ooo_status || {};
   let coordinator = metaRes.data?.coordinator ?? PEOPLE[0];
   let coordinatorDate = metaRes.data?.coordinator_date ?? "";
+  let assignments = rowsToAssignments(assignmentsRes.data);
+  let emailCounts = { ...initEmailCounts(), ...(metaRes.data?.email_counts || {}) };
 
-  // Auto-rotate if date has changed
+  // If the date has changed since last check, rotate coordinator AND reset the board
   if (coordinatorDate !== today) {
     coordinator = getNextCoordinator(coordinator, oooStatus);
     coordinatorDate = today;
+
+    // Reset all assignments to false
+    assignments = initAssignments();
+    await Promise.all(
+      PEOPLE.flatMap(person =>
+        CATEGORIES.map(cat =>
+          supabase.from("assignments").upsert({
+            id: assignmentId(person, cat),
+            person,
+            category: cat,
+            active: false,
+            updated_at: new Date().toISOString(),
+          })
+        )
+      )
+    );
+
+    // Reset email counts to 0
+    emailCounts = initEmailCounts();
+
     await supabase.from("board_meta").upsert({
       id: META_ID,
       coordinator,
       coordinator_date: coordinatorDate,
+      email_counts: emailCounts,
       updated_at: new Date().toISOString(),
     });
   }
 
   return {
-    assignments: rowsToAssignments(assignmentsRes.data),
+    assignments,
     title: metaRes.data?.title ?? defaultBoardPayload().title,
     comments: { ...initComments(), ...(metaRes.data?.comments || {}) },
-    emailCounts: { ...initEmailCounts(), ...(metaRes.data?.email_counts || {}) },
+    emailCounts,
     oooStatus,
     workloadColor: metaRes.data?.workload_color ?? "#ef4444",
     coordinator,
