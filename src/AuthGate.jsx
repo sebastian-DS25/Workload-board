@@ -43,7 +43,7 @@ export default function AuthGate({ children }) {
     const normalizedEmail = email.trim().toLowerCase()
 
     if (!normalizedEmail) {
-      setMessage('Indtast din Alfa Laval-emailadresse.')
+      setMessage('Enter your Alfa Laval email address.')
       return
     }
 
@@ -62,10 +62,12 @@ export default function AuthGate({ children }) {
     })
 
     if (error) {
-      setMessage(`Loginlinket kunne ikke sendes: ${error.message}`)
+      setMessage(
+        `The sign-in link could not be sent: ${error.message}`,
+      )
     } else {
       setMessage(
-        'Hvis emailadressen er godkendt, modtager du nu et loginlink.',
+        'If the email address is authorized, you will receive a sign-in link shortly.',
       )
     }
 
@@ -76,7 +78,7 @@ export default function AuthGate({ children }) {
     const { error } = await supabase.auth.signOut()
 
     if (error) {
-      setMessage(`Du kunne ikke logges ud: ${error.message}`)
+      setMessage(`Sign-out failed: ${error.message}`)
     }
   }
 
@@ -84,8 +86,8 @@ export default function AuthGate({ children }) {
     return (
       <main style={styles.page}>
         <section style={styles.card}>
-          <h1>Konfigurationsfejl</h1>
-          <p>Forbindelsen til Supabase er ikke konfigureret.</p>
+          <h1>Configuration error</h1>
+          <p>The connection to Supabase is not configured.</p>
         </section>
       </main>
     )
@@ -95,7 +97,7 @@ export default function AuthGate({ children }) {
     return (
       <main style={styles.page}>
         <section style={styles.card}>
-          Kontrollerer login…
+          Checking sign-in status…
         </section>
       </main>
     )
@@ -108,8 +110,8 @@ export default function AuthGate({ children }) {
           <h1 style={styles.heading}>Workload Board</h1>
 
           <p style={styles.description}>
-            Log ind med den Alfa Laval-emailadresse, der er
-            inviteret til dashboardet.
+            Sign in with the Alfa Laval email address that was
+            invited to access this Workload Board.
           </p>
 
           <label htmlFor="login-email" style={styles.label}>
@@ -121,7 +123,7 @@ export default function AuthGate({ children }) {
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="navn@alfalaval.com"
+            placeholder="name@alfalaval.com"
             autoComplete="email"
             required
             style={styles.input}
@@ -135,7 +137,7 @@ export default function AuthGate({ children }) {
               opacity: sending ? 0.65 : 1,
             }}
           >
-            {sending ? 'Sender…' : 'Send loginlink'}
+            {sending ? 'Sending…' : 'Send sign-in link'}
           </button>
 
           {message && (
@@ -151,14 +153,14 @@ export default function AuthGate({ children }) {
   return (
     <>
       <div style={styles.userBar}>
-        <span>Logget ind som {session.user.email}</span>
+        <span>Signed in as {session.user.email}</span>
 
         <button
           type="button"
           onClick={signOut}
           style={styles.signOutButton}
         >
-          Log ud
+          Sign out
         </button>
       </div>
 
