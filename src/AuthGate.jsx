@@ -5,8 +5,9 @@ export default function AuthGate({ children }) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
-  const [sending, setSending] = useState(false)
+  const [signingIn, setSigningIn] = useState(false)
 
   useEffect(() => {
     if (!supabase) {
@@ -16,7 +17,7 @@ export default function AuthGate({ children }) {
 
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) {
-        setMessage(error.message)
+        setMessage('The current session could not be verified.')
       }
 
       setSession(data?.session ?? null)
@@ -37,48 +38,40 @@ export default function AuthGate({ children }) {
     }
   }, [])
 
-  async function sendMagicLink(event) {
+  async function signIn(event) {
     event.preventDefault()
 
     const normalizedEmail = email.trim().toLowerCase()
 
-    if (!normalizedEmail) {
-      setMessage('Enter your Alfa Laval email address.')
+    if (!normalizedEmail || !password) {
+      setMessage('Enter your email address and password.')
       return
     }
 
-    setSending(true)
+    setSigningIn(true)
     setMessage('')
 
-    const redirectTo =
-      window.location.origin + window.location.pathname
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        emailRedirectTo: redirectTo,
-        shouldCreateUser: false,
-      },
-    })
+    const { error } =
+      await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      })
 
     if (error) {
       setMessage(
-        `The sign-in link could not be sent: ${error.message}`,
+        'Sign-in failed. Check your email address and password.',
       )
-    } else {
-      setMessage(
-        'If the email address is authorized, you will receive a sign-in link shortly.',
-      )
+      setPassword('')
     }
 
-    setSending(false)
+    setSigningIn(false)
   }
 
   async function signOut() {
     const { error } = await supabase.auth.signOut()
 
     if (error) {
-      setMessage(`Sign-out failed: ${error.message}`)
+      setMessage('Sign-out failed. Please try again.')
     }
   }
 
@@ -106,12 +99,12 @@ export default function AuthGate({ children }) {
   if (!session) {
     return (
       <main style={styles.page}>
-        <form style={styles.card} onSubmit={sendMagicLink}>
+        <form style={styles.card} onSubmit={signIn}>
           <h1 style={styles.heading}>Workload Board</h1>
 
           <p style={styles.description}>
-            Sign in with the Alfa Laval email address that was
-            invited to access this Workload Board.
+            Sign in with the Alfa Laval email address and
+            password provided to you.
           </p>
 
           <label htmlFor="login-email" style={styles.label}>
@@ -124,20 +117,37 @@ export default function AuthGate({ children }) {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="name@alfalaval.com"
-            autoComplete="email"
+            autoComplete="username"
+            required
+            style={styles.input}
+          />
+
+          <label htmlFor="login-password" style={styles.label}>
+            Password
+          </label>
+
+          <input
+            id="login-password"
+            type="password"
+            value={password}
+            onChange={(event) =>
+              setPassword(event.target.value)
+            }
+            placeholder="Enter your password"
+            autoComplete="current-password"
             required
             style={styles.input}
           />
 
           <button
             type="submit"
-            disabled={sending}
+            disabled={signingIn}
             style={{
               ...styles.primaryButton,
-              opacity: sending ? 0.65 : 1,
+              opacity: signingIn ? 0.65 : 1,
             }}
           >
-            {sending ? 'Sending…' : 'Send sign-in link'}
+            {signingIn ? 'Signing in…' : 'Sign in'}
           </button>
 
           {message && (
