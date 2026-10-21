@@ -27,8 +27,25 @@ function rowsToAssignments(rows) {
   return assignments;
 }
 
-function todayString() {
-  return new Date().toISOString().slice(0, 10);
+function getCurrentWorkdayInfo() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Copenhagen",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).formatToParts(new Date());
+
+  const values = Object.fromEntries(
+    parts.map(({ type, value }) => [type, value])
+  );
+
+  return {
+    date: `${values.year}-${values.month}-${values.day}`,
+    isWeekday:
+      values.weekday !== "Sat" &&
+      values.weekday !== "Sun",
+  };
 }
 
 function getNextCoordinator(current, oooStatus) {
@@ -67,7 +84,10 @@ export async function loadBoard() {
   if (assignmentsRes.error) throw assignmentsRes.error;
   if (metaRes.error) throw metaRes.error;
 
-  const today = todayString();
+  const {
+  date: today,
+  isWeekday,
+} = getCurrentWorkdayInfo();
   const oooStatus = metaRes.data?.ooo_status || {};
   let coordinator = metaRes.data?.coordinator ?? PEOPLE[0];
   let coordinatorDate = metaRes.data?.coordinator_date ?? "";
@@ -75,7 +95,7 @@ export async function loadBoard() {
   let emailCounts = { ...initEmailCounts(), ...(metaRes.data?.email_counts || {}) };
 
   // If the date has changed since last check, rotate coordinator AND reset the board
-  if (coordinatorDate !== today) {
+  if (isWeekday && coordinatorDate !== today) {
     coordinator = getNextCoordinator(coordinator, oooStatus);
     coordinatorDate = today;
 
