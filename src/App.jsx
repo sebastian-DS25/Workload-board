@@ -433,6 +433,7 @@ export default function App() {
                             type="number"
                             min="0"
                             value={emailCounts[cat] ?? 0}
+                            onFocus={(event) => event.target.select()}
                             onChange={e => updateEmailCount(cat, e.target.value)}
                             onBlur={e => {
                               const newCounts = {
