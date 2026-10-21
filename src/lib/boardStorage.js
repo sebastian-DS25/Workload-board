@@ -27,14 +27,14 @@ function rowsToAssignments(rows) {
   return assignments;
 }
 
-function getCurrentWorkdayInfo() {
+function getCurrentWorkdayInfo(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Copenhagen",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     weekday: "short",
-  }).formatToParts(new Date());
+  }).formatToParts(now);
 
   const values = Object.fromEntries(
     parts.map(({ type, value }) => [type, value])
