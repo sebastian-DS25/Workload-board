@@ -57,6 +57,45 @@ function getNextCoordinator(current, oooStatus) {
   return current;
 }
 
+// ------------------------------------------------------------
+// Workload-logning
+// ------------------------------------------------------------
+// Oversættelse fra farve til numerisk niveau, så der kan laves
+// statistik på tværs af måneder (1 = grøn, 2 = gul, 3 = rød).
+const LEVEL_FROM_COLOR = { "#22c55e": 1, "#f59e0b": 2, "#ef4444": 3 };
+
+// Gemmer en arbejdsdags workload-niveau + email-counts.
+// Kaldes fra loadBoard() lige INDEN boardet nulstilles, så
+// værdierne hører til den dag der afsluttes - ikke til i dag.
+// Fejler aldrig udadtil: en mislykket log må ikke kunne
+// blokere, at boardet loader om morgenen.
+async function logWorkloadForDate(logDate, color, counts) {
+  if (!supabase || !logDate) return;
+
+  // Log aldrig weekender - der arbejdes ikke
+  const day = new Date(`${logDate}T12:00:00`).getDay(); // 0 = søn, 6 = lør
+  if (day === 0 || day === 6) return;
+
+  const level = LEVEL_FROM_COLOR[color];
+  if (!level) return;
+
+  const emailCounts = counts || {};
+  const total = Object.values(emailCounts).reduce((a, b) => a + (b || 0), 0);
+
+  const { error } = await supabase.from("workload_log").upsert(
+    {
+      log_date: logDate,
+      level,
+      email_total: total,
+      email_counts: emailCounts,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "log_date" }
+  );
+
+  if (error) console.error("Workload log failed:", error);
+}
+
 function loadLocal() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -96,6 +135,16 @@ export async function loadBoard() {
 
   // If the date has changed since last check, rotate coordinator AND reset the board
   if (isWeekday && coordinatorDate !== today) {
+
+    // Gem den afsluttede dags workload + email-counts FØR nulstilling.
+    // Skal ligge her: metaRes.data rummer stadig de gamle værdier,
+    // og coordinatorDate peger stadig på den dag der afsluttes.
+    await logWorkloadForDate(
+      coordinatorDate,
+      metaRes.data?.workload_color,
+      metaRes.data?.email_counts
+    );
+
     coordinator = getNextCoordinator(coordinator, oooStatus);
     coordinatorDate = today;
 
