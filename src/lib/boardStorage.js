@@ -69,7 +69,7 @@ const LEVEL_FROM_COLOR = { "#22c55e": 1, "#f59e0b": 2, "#ef4444": 3 };
 // værdierne hører til den dag der afsluttes - ikke til i dag.
 // Fejler aldrig udadtil: en mislykket log må ikke kunne
 // blokere, at boardet loader om morgenen.
-async function logWorkloadForDate(logDate, color, counts) {
+async function logWorkloadForDate(logDate, color, counts, ooo) {
   if (!supabase || !logDate) return;
 
   // Log aldrig weekender - der arbejdes ikke
@@ -82,12 +82,19 @@ async function logWorkloadForDate(logDate, color, counts) {
   const emailCounts = counts || {};
   const total = Object.values(emailCounts).reduce((a, b) => a + (b || 0), 0);
 
+  // Bemanding: alle der IKKE er markeret out of office
+  const oooStatus = ooo || {};
+  const oooNames = PEOPLE.filter(p => oooStatus[p]);
+
   const { error } = await supabase.from("workload_log").upsert(
     {
       log_date: logDate,
       level,
       email_total: total,
       email_counts: emailCounts,
+      staff_available: PEOPLE.length - oooNames.length,
+      staff_total: PEOPLE.length,
+      ooo_names: oooNames,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "log_date" }
@@ -142,7 +149,8 @@ export async function loadBoard() {
     await logWorkloadForDate(
       coordinatorDate,
       metaRes.data?.workload_color,
-      metaRes.data?.email_counts
+      metaRes.data?.email_counts,
+      metaRes.data?.ooo_status
     );
 
     coordinator = getNextCoordinator(coordinator, oooStatus);
